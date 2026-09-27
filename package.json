@@ -3,17 +3,19 @@
   "type": "module",
   "version": "0.0.1",
   "engines": {
-    "node": ">=22.12.0"
+    "node": "24.x"
   },
   "scripts": {
     "dev": "astro dev",
+    "prebuild": "node --test tests/assets.test.mjs",
     "build": "astro build",
+    "postbuild": "node scripts/check-vercel-output.mjs",
     "preview": "astro preview",
-    "start": "node --env-file-if-exists=.env ./dist/server/entry.mjs",
+    "test": "node --test tests/*.test.mjs",
     "astro": "astro"
   },
   "dependencies": {
-    "@astrojs/node": "^11.1.6",
+    "@astrojs/vercel": "^11.0.11",
     "@astrojs/react": "^6.0.4",
     "@react-three/drei": "^10.7.8",
     "@react-three/fiber": "^9.7.0",

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readdirSync, readFileSync, existsSync } from 'node:fs';
+import { readdirSync, readFileSync, existsSync, openSync, readSync, closeSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -22,5 +22,22 @@ test('all scene model, animation, environment and background references exist', 
 test('every shipped model has a source reference', () => {
   for (const file of readdirSync(join(root, 'public/models'))) {
     assert.ok(assets.has(`/models/${file}`), `Unreferenced model: ${file}`);
+  }
+});
+
+test('scene GLBs contain full model data, not Git LFS pointers', () => {
+  for (const asset of assets) {
+    if (!asset.endsWith('.glb')) continue;
+    const path = join(root, 'public', asset);
+    const header = Buffer.alloc(12);
+    const handle = openSync(path, 'r');
+    try {
+      assert.equal(readSync(handle, header, 0, header.length, 0), 12, `Truncated model: ${asset}`);
+    } finally {
+      closeSync(handle);
+    }
+    assert.equal(header.toString('ascii', 0, 4), 'glTF', `${asset} is not a model. Enable Git LFS in Vercel Project Settings > Git and redeploy, or run git lfs pull locally.`);
+    assert.equal(header.readUInt32LE(4), 2, `Unsupported GLB version: ${asset}`);
+    assert.equal(header.readUInt32LE(8), statSync(path).size, `Incomplete model download: ${asset}`);
   }
 });

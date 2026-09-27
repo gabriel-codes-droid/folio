@@ -18,6 +18,10 @@ export const POST: APIRoute = async ({ request }) => {
     return Response.json({ error: 'The message could not be read.' }, { status: 400 });
   }
 
+  if (payload === null || typeof payload !== 'object' || Array.isArray(payload)) {
+    return Response.json({ error: 'The message could not be read.' }, { status: 400 });
+  }
+
   // Quietly accept the honeypot so simple bots do not learn whether they were caught.
   if (typeof payload.website === 'string' && payload.website.trim()) {
     return Response.json({ ok: true });
@@ -38,23 +42,28 @@ export const POST: APIRoute = async ({ request }) => {
   }
 
   const from = getSecret('RESEND_FROM_EMAIL') || 'Portfolio <onboarding@resend.dev>';
-  const resendResponse = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      from,
-      to: [recipient],
-      reply_to: email,
-      subject: `Portfolio enquiry from ${email}`,
-      text: `Reply-to: ${email}\n\n${message}`,
-    }),
-  });
+  let resendResponse: Response;
+  try {
+    resendResponse = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from,
+        to: [recipient],
+        reply_to: email,
+        subject: `Portfolio enquiry from ${email}`,
+        text: `Reply-to: ${email}\n\n${message}`,
+      }),
+      signal: AbortSignal.timeout(15000),
+    });
+  } catch {
+    return Response.json({ error: 'The message could not be sent right now.' }, { status: 502 });
+  }
 
   if (!resendResponse.ok) {
-    console.error('Resend rejected the contact message:', await resendResponse.text());
     return Response.json({ error: 'The message could not be sent right now.' }, { status: 502 });
   }
 

@@ -5,6 +5,9 @@ import PortfolioIntro from '../components/PortfolioIntro.astro';
 import PortfolioOutro from '../components/PortfolioOutro';
 import '../styles/editorial.css';
 import '../styles/editorial-refinements.css';
+
+// The journey runs in the browser; only /api/contact needs server execution.
+export const prerender = true;
 ---
 
 <Layout title="N. MANDRAKE GABRIEL | Full Stack Developer">

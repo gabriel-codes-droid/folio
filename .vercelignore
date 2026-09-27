@@ -1,0 +1,8 @@
+# Old local preview output; the current site is built from src/ and public/.
+dist-verify/
+dist/
+.astro/
+.env*
+!.env.example
+.kilo/
+.vscode/
