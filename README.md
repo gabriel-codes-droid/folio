@@ -39,12 +39,12 @@ Make sure you have Node.js installed on your machine:
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/gabriel-codes-droid/vts.git
+   git clone https://github.com/gabriel-codes-droid/folio.git
    ```
 
 2. **Navigate into the project directory:**
    ```bash
-   cd vts
+   cd folio
    ```
 
 3. **Install dependencies:**
@@ -72,7 +72,7 @@ Copy `.env.example` to `.env`, add a Resend API key, and set `RESEND_FROM_EMAIL`
 
 ## Deploy to Vercel
 
-1. Import `gabriel-codes-droid/vts` in Vercel and use `main` with the repository root as the root directory.
+1. Import `gabriel-codes-droid/folio` in Vercel and use `main` with the repository root as the root directory.
 2. Use the Astro framework preset and Node.js 24. `vercel.json` sets `npm ci` as the install command and `npm run build` as the build command. Leave the output directory at the framework default.
 3. Enable **Project Settings → Git → Git Large File Storage (LFS)**. If the initial import has already built without LFS, enable it and redeploy. The prebuild check intentionally fails when models are still pointers.
 4. Add `RESEND_API_KEY` and `RESEND_FROM_EMAIL` for Production and, if needed, Preview. Redeploy after changing them. Local `.env` files are excluded from Git and deployment.
