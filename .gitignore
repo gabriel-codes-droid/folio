@@ -2,6 +2,7 @@
 dist/
 dist-verify/
 .vercel/
+.asset-work/
 # generated types
 .astro/
 

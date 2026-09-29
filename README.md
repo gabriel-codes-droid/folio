@@ -86,6 +86,14 @@ References: [Astro Vercel adapter](https://docs.astro.build/en/guides/integratio
 
 ## Verification
 
+### Scene downloads
+
+The space journey downloads two assets at a time in resumable 2 MB chunks. Failed requests retry automatically; the retry button keeps completed chunks instead of reloading the page. Models are parsed only after their binary downloads finish, followed by the existing texture/shader GPU warm-up.
+
+`prebuild` generates the size/version manifest from `public/models/`. Run the build again whenever a model changes. Model textures use WebP with bounded dimensions to reduce decoded/GPU memory (1K for the multi-material mech and distant debris, 2K for cubes/planets, 4K for the single-texture shuttle and moon). Geometry, rigs and animations are unchanged. The original sky-lighting source is archived in `assets/source/night-sky.exr` (excluded from deployment); the scene uses a smaller HDR derived from that source. Its visible star background is separate and unchanged.
+
+### Checks
+
 ```sh
 npm test
 npm run build

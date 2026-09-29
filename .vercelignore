@@ -6,3 +6,5 @@ dist/
 !.env.example
 .kilo/
 .vscode/
+assets/source/
+.asset-work/

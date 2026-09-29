@@ -140,14 +140,14 @@ class SceneErrorBoundary extends Component {
   render() { return this.state.failed ? null : this.props.children; }
 }
 
-const SpaceCanvas = () => {
+const SpaceCanvas = ({ initialProgress = 0, onPrepared }) => {
   const scrollTrackRef = useRef(null);
   const [astronautPhase, setAstronautPhase] = useState('sleeping');
   const scrollProgressRef = useRef(0);
   const regionRef = useRef(null);
   const [inView, setInView] = useState(false);
   const [selectedProject, setSelectedProject] = useState(null);
-  const [preparation, setPreparation] = useState({ progress: 0, error: '' });
+  const [preparation, setPreparation] = useState({ progress: initialProgress, error: '' });
   useEffect(() => {
     const update = event => setPreparation(previous => ({ ...event.detail, progress: Math.max(previous.progress, event.detail.progress) }));
     window.addEventListener('portfolio:preparation', update);
@@ -180,7 +180,7 @@ const SpaceCanvas = () => {
   // warm-up work SceneReady does (texture upload, shader compile, GPU fence
   // sync) is untouched, only the visual loading screen and its event
   // hand-off are gone.
-  const handleReady = useCallback(() => setReady(true), []);
+  const handleReady = useCallback(() => { setReady(true); onPrepared?.(); }, [onPrepared]);
 
   useEffect(() => {
     if (!ready || !scrollTrackRef.current) return;
@@ -240,14 +240,9 @@ const SpaceCanvas = () => {
           <pointLight position={[-10, -5, -10]} intensity={0.6} color="#3b82f6" distance={30} />
           <pointLight position={[10, 5, 10]} intensity={0.5} color="#8b5cf6" distance={25} />
 
-            {/* Restoring the real night-sky environment map — this had been
-                dropped somewhere along the way, leaving just flat black +
-                the procedural starfield with nothing for reflective
-                surfaces (the cube glass, the mech's visor/metal) to catch
-                light from. background=false keeps the visible backdrop as
-                the actual starfield/black canvas; this only feeds lighting
-                and reflections. */}
-            <Environment files="/models/night-sky.exr" background={false} />
+            {/* Same night-sky lighting, downsampled for reflections. The
+                visible star background is unchanged; no 73 MB EXR download. */}
+            <Environment files="/models/night-sky.hdr" background={false} />
 
             {/* Keep the cube field mounted from the opening frame. The route
                 should already exist in the space while the mech sleeps and

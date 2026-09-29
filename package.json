@@ -7,7 +7,7 @@
   },
   "scripts": {
     "dev": "astro dev",
-    "prebuild": "node --test tests/assets.test.mjs",
+    "prebuild": "node scripts/prebuild.mjs",
     "build": "astro build",
     "postbuild": "node scripts/check-vercel-output.mjs",
     "preview": "astro preview",

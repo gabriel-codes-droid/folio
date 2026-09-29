@@ -9,7 +9,7 @@ const publicDirectory = join(root, 'public');
 const staticDirectory = join(output, 'static');
 const functionsDirectory = join(output, 'functions');
 const functionLimit = 250 * 1024 * 1024;
-const sceneExtensions = new Set(['.glb', '.gltf', '.fbx', '.exr']);
+const sceneExtensions = new Set(['.glb', '.gltf', '.fbx', '.exr', '.hdr']);
 let skippedDirectoryLinks = 0;
 
 function requirePath(path, type) {

@@ -1,8 +1,9 @@
 // Repack embedded PNG/JPEG GLB textures as high-quality WebP without changing
-// geometry, skeletons, animation tracks, image dimensions, or material links.
+// geometry, skeletons, animation tracks, or material links. An optional maximum
+// texture edge also bounds decoded/GPU memory for web delivery.
 //
 // Usage:
-//   node scripts/optimize-glb-textures.mjs input.glb output.glb
+//   node scripts/optimize-glb-textures.mjs input.glb output.glb [maximumEdge]
 //
 // The command never edits the input. It keeps an original image untouched if
 // WebP would make it larger, which makes the result safe for mixed-source GLBs.
@@ -10,10 +11,17 @@ import { readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import sharp from 'sharp';
 
-const [inputPath, outputPath] = process.argv.slice(2);
+const [inputPath, outputPath, edgeArgument] = process.argv.slice(2);
+const maximumEdge = edgeArgument ? Number(edgeArgument) : null;
+if (maximumEdge !== null && (!Number.isInteger(maximumEdge) || maximumEdge < 256)) {
+  throw new Error('Maximum texture edge must be an integer of at least 256 pixels.');
+}
 
 if (!inputPath || !outputPath) {
   throw new Error('Usage: node scripts/optimize-glb-textures.mjs input.glb output.glb');
+}
+if (path.resolve(inputPath) === path.resolve(outputPath)) {
+  throw new Error('Use a separate output path to preserve the original model.');
 }
 
 const GLB_MAGIC = 0x46546c67;
@@ -81,18 +89,25 @@ for (let index = 0; index < (json.bufferViews ?? []).length; index += 1) {
   const image = imagesByView.get(index);
   let replacement = original;
 
-  if (image && /image\/(png|jpeg|jpg|webp)/i.test(image.mimeType ?? '')) {
-    console.log(`  texture ${converted + 1}/${json.images.length}`);
-    oldImageBytes += original.length;
-    const candidate = await sharp(original, { animated: false, limitInputPixels: false })
-      .webp({ quality: 92, alphaQuality: 100, effort: 4, smartSubsample: true })
-      .toBuffer();
-    if (candidate.length < original.length) {
-      replacement = candidate;
-      image.mimeType = 'image/webp';
-      converted += 1;
+  if (image && /image\/(png|jpeg|jpg|webp)$/i.test(image.mimeType ?? '')) {
+    const pipeline = sharp(original, { animated: false, limitInputPixels: false });
+    const metadata = await pipeline.metadata();
+    const needsResize = maximumEdge && Math.max(metadata.width, metadata.height) > maximumEdge;
+    const needsEncoding = needsResize || image.mimeType !== 'image/webp';
+    if (needsEncoding) {
+      console.log(`  texture ${converted + 1}/${json.images.length}`);
+      oldImageBytes += original.length;
+      if (needsResize) pipeline.resize({ width: maximumEdge, height: maximumEdge, fit: 'inside', withoutEnlargement: true });
+      const candidate = await pipeline
+        .webp({ quality: 92, alphaQuality: 100, effort: 4, smartSubsample: true })
+        .toBuffer();
+      if (needsResize || candidate.length < original.length) {
+        replacement = candidate;
+        image.mimeType = 'image/webp';
+        converted += 1;
+      }
+      newImageBytes += replacement.length;
     }
-    newImageBytes += replacement.length;
   }
 
   const offset = rebuiltViews.reduce((length, part) => length + part.length, 0);
@@ -105,6 +120,15 @@ for (let index = 0; index < (json.bufferViews ?? []).length; index += 1) {
 
 const rebuiltBinary = Buffer.concat(rebuiltViews);
 json.buffers[0].byteLength = rebuiltBinary.length;
+// WebP is an extension in glTF, not a core texture source. Preserve any
+// existing texture extensions while declaring the format for conforming loaders.
+for (const texture of json.textures ?? []) {
+  if (texture.source === undefined || json.images[texture.source]?.mimeType !== 'image/webp') continue;
+  texture.extensions = { ...texture.extensions, EXT_texture_webp: { source: texture.source } };
+  delete texture.source;
+  json.extensionsUsed = [...new Set([...(json.extensionsUsed ?? []), 'EXT_texture_webp'])];
+  json.extensionsRequired = [...new Set([...(json.extensionsRequired ?? []), 'EXT_texture_webp'])];
+}
 const output = writeGlb(json, rebuiltBinary);
 await writeFile(outputPath, output);
 
