@@ -92,6 +92,38 @@ test('a stalled chunk is aborted and can be retried', async () => {
   assert.equal(attempts, 2);
 });
 
+test('a slow stream is not timed out while data keeps arriving', async () => {
+  let requests = 0;
+  const started = Date.now();
+  const loader = createAssetDownloads({ timeoutMs: 100, attempts: 1, fetchImpl: async (_, { signal }) => {
+    requests++;
+    let timer;
+    const body = new ReadableStream({ start(controller) {
+      let sent = 0;
+      timer = setInterval(() => {
+        controller.enqueue(new Uint8Array(1));
+        if (++sent === 12) { clearInterval(timer); controller.close(); }
+      }, 30);
+      signal.addEventListener('abort', () => { clearInterval(timer); controller.error(new Error('Aborted')); }, { once: true });
+    }, cancel() { clearInterval(timer); } });
+    return new Response(body);
+  } });
+  await loader.prepare([asset]);
+  assert.equal(requests, 1);
+  assert.ok(Date.now() - started > 100, 'Transfer must exceed the idle timeout in total');
+});
+
+test('fast connections grow chunks without exceeding the configured cap', async () => {
+  const requested = [];
+  const loader = createAssetDownloads({ chunkBytes: 4, maxChunkBytes: 8, fetchImpl: async (_, options) => {
+    const [start, end] = range(options);
+    requested.push([start, end]);
+    return rangeResponse(start, end);
+  } });
+  await loader.prepare([asset]);
+  assert.deepEqual(requested, [[0, 3], [4, 11]]);
+});
+
 test('prefetched data is reused by the installed Three FileLoader', async () => {
   Cache.enabled = true;
   const bytes = new ArrayBuffer(12);

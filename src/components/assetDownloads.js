@@ -1,4 +1,4 @@
-const CHUNK_BYTES = 2 * 1024 * 1024;
+const CHUNK_BYTES = 256 * 1024;
 const pause = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds));
 
 export class AssetDownloadError extends Error {
@@ -14,6 +14,7 @@ export class AssetDownloadError extends Error {
 export function createAssetDownloads({
   fetchImpl = (...args) => fetch(...args),
   chunkBytes = CHUNK_BYTES,
+  maxChunkBytes = chunkBytes === CHUNK_BYTES ? 2 * 1024 * 1024 : chunkBytes,
   attempts = 4,
   timeoutMs = 45000,
   sleep = pause,
@@ -23,16 +24,21 @@ export function createAssetDownloads({
     const key = `${asset.url}?v=${asset.version}`;
     let entry = entries.get(key);
     if (!entry) {
-      entry = { buffer: new Uint8Array(asset.bytes), offset: 0 };
+      entry = { buffer: new Uint8Array(asset.bytes), offset: 0, chunkBytes };
       entries.set(key, entry);
     }
     while (entry.offset < asset.bytes) {
       const start = entry.offset;
-      const end = Math.min(start + chunkBytes, asset.bytes) - 1;
+      const end = Math.min(start + entry.chunkBytes, asset.bytes) - 1;
       let failure;
       for (let attempt = 0; attempt < attempts; attempt++) {
         const controller = new AbortController();
-        const timer = setTimeout(() => controller.abort(), timeoutMs);
+        let timer;
+        // This is an idle timeout, not a deadline for the entire transfer:
+        // slow connections must not lose a chunk while bytes keep arriving.
+        const resetTimer = () => { clearTimeout(timer); timer = setTimeout(() => controller.abort(), timeoutMs); };
+        resetTimer();
+        const started = Date.now();
         try {
           const response = await fetchImpl(key, {
             headers: { Range: `bytes=${start}-${end}` },
@@ -42,12 +48,25 @@ export function createAssetDownloads({
           if (response.status === 206 && response.headers.get('Content-Range') !== `bytes ${start}-${end}/${asset.bytes}`) {
             throw new Error('Unexpected asset range; the file may have changed.');
           }
-          const bytes = new Uint8Array(await response.arrayBuffer());
           // Development servers may ignore Range and send the entire file.
           const wholeFile = response.status === 200;
-          if (bytes.length !== (wholeFile ? asset.bytes : end - start + 1)) throw new Error('Incomplete asset download.');
-          entry.buffer.set(bytes, wholeFile ? 0 : start);
+          const expected = wholeFile ? asset.bytes : end - start + 1;
+          const reader = response.body.getReader();
+          let received = 0;
+          while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
+            resetTimer();
+            if (received + value.length > expected) throw new Error('Oversized asset response.');
+            // A failed chunk is overwritten from the same offset on retry.
+            entry.buffer.set(value, (wholeFile ? 0 : start) + received);
+            received += value.length;
+          }
+          if (received !== expected) throw new Error('Incomplete asset download.');
           entry.offset = wholeFile ? asset.bytes : end + 1;
+          const elapsed = Date.now() - started;
+          if (elapsed < 4000) entry.chunkBytes = Math.min(maxChunkBytes, entry.chunkBytes * 2);
+          else if (elapsed > 12000) entry.chunkBytes = Math.max(Math.min(chunkBytes, 64 * 1024), Math.floor(entry.chunkBytes / 2));
           failure = null;
           onProgress?.();
           break;
