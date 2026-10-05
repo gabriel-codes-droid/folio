@@ -88,9 +88,13 @@ References: [Astro Vercel adapter](https://docs.astro.build/en/guides/integratio
 
 ### Scene downloads
 
-The space journey downloads two assets at a time in resumable chunks, starting at 256 KB and adapting between 64 KB and 2 MB to the connection. The timeout only fires when no data arrives, not while a slow download is making progress. Failed requests retry automatically; the retry button keeps completed chunks instead of reloading the page. Models are parsed only after their binary downloads finish, followed by the existing texture/shader GPU warm-up.
+The space journey streams two assets at a time, using one request per file on a healthy connection. Interrupted requests resume from their last received byte instead of downloading the file again. The 45-second timeout only fires when no data arrives, not while a slow download is making progress. The retry button retains downloaded bytes instead of reloading the page. Models are parsed only after their binary downloads finish, followed by the existing texture/shader GPU warm-up.
+
+Complete assets are stored in an optional, versioned browser cache for repeat visits. Length, GLB headers and (where Web Crypto is available) manifest hashes are checked before reuse. Cache failures or unavailable storage fall back to downloads; background cache writes never gate scene readiness. Superseded versions are removed only from this application's asset cache.
 
 `prebuild` generates the size/version manifest from `public/models/`. Run the build again whenever a model changes. Model textures use WebP with bounded dimensions to reduce decoded/GPU memory (1K for the multi-material mech and distant debris, 2K for cubes/planets, 4K for the single-texture shuttle and moon). Geometry, rigs and animations are unchanged. The original sky-lighting source is archived in `assets/source/night-sky.exr` (excluded from deployment); the scene uses a smaller HDR derived from that source. Its visible star background is separate and unchanged.
+
+Lossless Meshopt geometry compression reduces the complete scene download from 158.5 MB to 103.1 MB without changing scene layout, geometry, rigs, animations or texture bytes. `scripts/optimize-glb-geometry.mjs` writes to a separate output file and verifies every compressed buffer with the installed scene loader's decoder. `tests/geometryCompression.test.mjs` checks decoded-content fingerprints against the previous assets and constructs every model with the installed GLTFLoader. Update those fingerprints only for intentional artwork changes. These headless checks do not replace browser texture/GPU testing. First visits still transfer a substantial amount of data; connection speed and device performance affect readiness.
 
 ### Checks
 

@@ -2,18 +2,18 @@
 export const SCENE_ASSETS = [
   {
     "url": "/models/alien_planet.glb",
-    "bytes": 2204952,
-    "version": "86d88705188710f1"
+    "bytes": 2107148,
+    "version": "da8b23ca60723b58"
   },
   {
     "url": "/models/aliencubealpha-unit.glb",
-    "bytes": 15696976,
-    "version": "c90a4d64cf45d095"
+    "bytes": 8409152,
+    "version": "53b3589b28054e76"
   },
   {
     "url": "/models/bot_mecha_warrior.glb",
-    "bytes": 20847724,
-    "version": "043644daa237bd84"
+    "bytes": 13690580,
+    "version": "55ae483d67bd28c7"
   },
   {
     "url": "/models/flying.fbx",
@@ -22,8 +22,8 @@ export const SCENE_ASSETS = [
   },
   {
     "url": "/models/halo_4multiplayercrimsonwreckage.glb",
-    "bytes": 59341344,
-    "version": "d12f4d699b23dcb6"
+    "bytes": 39932996,
+    "version": "550b2b3c155a6c65"
   },
   {
     "url": "/models/idle.fbx",
@@ -32,8 +32,8 @@ export const SCENE_ASSETS = [
   },
   {
     "url": "/models/international_space_station_-_3d_scan_-_module.glb",
-    "bytes": 7470928,
-    "version": "2d5a3f90497f463c"
+    "bytes": 4938204,
+    "version": "132951a97f6500cb"
   },
   {
     "url": "/models/jump.fbx",
@@ -47,18 +47,18 @@ export const SCENE_ASSETS = [
   },
   {
     "url": "/models/lava_planet.glb",
-    "bytes": 4460636,
-    "version": "2f873baa7b167230"
+    "bytes": 4363444,
+    "version": "85e3d27bc1e3c599"
   },
   {
     "url": "/models/little_planet_earth.glb",
-    "bytes": 1745740,
-    "version": "354d6c5bdba13f87"
+    "bytes": 1426152,
+    "version": "4862cd98220d0d4b"
   },
   {
     "url": "/models/moon.glb",
-    "bytes": 18605340,
-    "version": "0cda0f8c7f01e29c"
+    "bytes": 9682056,
+    "version": "00a3600c0b6fdf08"
   },
   {
     "url": "/models/night-sky.hdr",
@@ -67,13 +67,13 @@ export const SCENE_ASSETS = [
   },
   {
     "url": "/models/planet_earth.glb",
-    "bytes": 9994268,
-    "version": "4ae46724ee2f6e99"
+    "bytes": 4997348,
+    "version": "74725372a2404df1"
   },
   {
     "url": "/models/sci-fi_cube_01.glb",
-    "bytes": 9005024,
-    "version": "500d3cdea9c2f1a5"
+    "bytes": 4412728,
+    "version": "58beb6ef1ca97cb2"
   },
   {
     "url": "/models/sitting.fbx",
