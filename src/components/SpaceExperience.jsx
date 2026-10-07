@@ -11,6 +11,10 @@ function prepareScene() {
   if (!preparation) {
     Cache.enabled = true;
     preparation = downloads.prepare(SCENE_ASSETS, {
+      // Vercel's edge can serve several immutable model files concurrently;
+      // keep the loader's default of two for constrained callers, while the
+      // portfolio warms its scene with a third stream to reduce request wait.
+      concurrency: 3,
       onProgress: value => { progress = value; for (const listener of listeners) listener(value); },
       onAsset: (asset, buffer) => Cache.add(`file:${asset.url}`, buffer),
     }).then(() => import('./SpaceCanvas')).catch(error => {

@@ -90,7 +90,7 @@ References: [Astro Vercel adapter](https://docs.astro.build/en/guides/integratio
 
 ### Scene downloads
 
-The space journey streams two assets at a time, using one request per file on a healthy connection. Interrupted requests resume from their last received byte instead of downloading the file again. The 45-second timeout only fires when no data arrives, not while a slow download is making progress. The retry button retains downloaded bytes instead of reloading the page. Models are parsed only after their binary downloads finish, followed by the existing texture/shader GPU warm-up.
+The space journey streams three assets at a time in the portfolio, using one request per file on a healthy connection. Interrupted requests resume from their last received byte instead of downloading the file again. The 45-second timeout only fires when no data arrives, not while a slow download is making progress. The retry button retains downloaded bytes instead of reloading the page. Models are parsed only after their binary downloads finish, followed by the existing texture/shader GPU warm-up.
 
 Complete assets are stored in an optional, versioned browser cache for repeat visits. Length, GLB headers and (where Web Crypto is available) manifest hashes are checked before reuse. Cache failures or unavailable storage fall back to downloads; background cache writes never gate scene readiness. Superseded versions are removed only from this application's asset cache.
 
