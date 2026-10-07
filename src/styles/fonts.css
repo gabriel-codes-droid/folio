@@ -1,0 +1,23 @@
+/* Locally hosted Latin subsets; variable weights avoid separate font files. */
+@font-face {
+  font-family: 'Geist';
+  font-style: normal;
+  font-weight: 400 600;
+  font-display: swap;
+  src: url('/fonts/geist/geist-latin.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Geist Mono';
+  font-style: normal;
+  font-weight: 400 500;
+  font-display: swap;
+  src: url('/fonts/geist/geist-mono-latin.woff2') format('woff2');
+}
+
+:root {
+  --font-body: 'Geist', Arial, Helvetica, sans-serif;
+  --font-mono: 'Geist Mono', ui-monospace, SFMono-Regular, Consolas, monospace;
+}
+
+input, textarea, select, button { font-family: inherit; }

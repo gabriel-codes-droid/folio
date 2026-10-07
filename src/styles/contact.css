@@ -142,13 +142,13 @@
   display: flex;
   justify-content: space-between;
   color: #a4b5bd;
-  font: 10px/1 ui-monospace, SFMono-Regular, Consolas, monospace;
+  font: 10px/1 var(--font-mono);
   letter-spacing: .1em;
 }
 
 .contact-card-label,
 .contact-card-action {
-  font: 10px/1.2 ui-monospace, SFMono-Regular, Consolas, monospace;
+  font: 10px/1.2 var(--font-mono);
   letter-spacing: .1em;
 }
 
@@ -293,7 +293,7 @@
 
 .compose-kicker {
   color: #9fc8d9;
-  font: 10px/1.2 ui-monospace, SFMono-Regular, Consolas, monospace;
+  font: 10px/1.2 var(--font-mono);
   letter-spacing: .12em;
 }
 
@@ -337,7 +337,7 @@
 .compose-form label {
   margin-top: 8px;
   color: #9fc8d9;
-  font: 10px/1.2 ui-monospace, SFMono-Regular, Consolas, monospace;
+  font: 10px/1.2 var(--font-mono);
   letter-spacing: .1em;
 }
 
@@ -348,7 +348,7 @@
   border-radius: 4px;
   background: #020a10aa;
   color: #f3f3f0;
-  font: 14px/1.5 'General Sans', Arial, sans-serif;
+  font: 14px/1.6 var(--font-body);
   padding: 12px 13px;
   outline: none;
   resize: vertical;
@@ -383,7 +383,7 @@
   border-radius: 4px;
   background: #98cfe51c;
   color: #e4f6ff;
-  font: 11px ui-monospace, SFMono-Regular, Consolas, monospace;
+  font: 500 11px var(--font-body);
   letter-spacing: .06em;
   cursor: pointer;
   transition: background .25s ease, border-color .25s ease, transform .25s ease;
