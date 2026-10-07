@@ -82,6 +82,8 @@ The Vercel adapter builds `.vercel/output/`. The homepage is prerendered and ser
 
 The models remain in `public/models/` and are served as static files, outside the contact function. Vercel's documented 100 MB Hobby source-upload limit applies to CLI uploads; use GitHub import for this repository. The assets are still large, so test loading on a real connection and monitor bandwidth usage. The old `dist-verify/` build snapshot is excluded from Git and deployment; its local copy can be retained.
 
+Model responses are marked immutable for a year and explicitly advertise byte ranges. Their URLs include manifest versions in the loader, so a new asset revision gets a new cache key while repeat visits can be served from the nearest Vercel edge.
+
 References: [Astro Vercel adapter](https://docs.astro.build/en/guides/integrations-guide/vercel/), [Vercel Git LFS setting](https://vercel.com/docs/project-configuration/git-settings#git-large-file-storage-lfs), [Vercel limits](https://vercel.com/docs/limits#static-file-uploads).
 
 ## Verification
