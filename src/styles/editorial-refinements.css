@@ -73,7 +73,7 @@ body.overflow-x-hidden { overflow-x: clip; }
 .hero-copy .role-window { display: block; width: 6.8em; height: 1.25em; overflow: hidden; flex: 0 0 auto; }
 .hero-copy .role-strip { align-items: flex-end; animation: role-cycle 15s cubic-bezier(.76, 0, .24, 1) infinite; }
 .hero-copy .role-strip > span { width: 100%; text-align: right; }
-.hero-copy .hero-statement { font-size: 19px; line-height: 1.55; letter-spacing: -.015em; color: #b1b3b3; margin-top: 14px; }
+.hero-copy .hero-statement { font-size: 17px; line-height: 1.75; letter-spacing: -.025em; color: #b1b3b3; margin-top: 14px; }
 .hero-actions { display: flex; flex-direction: column; align-items: flex-start; gap: 22px; padding-bottom: 3px; }
 .editorial .hero-journey-link { display: inline-flex; gap: 18px; font-size: 13px; color: #9da3a5; transition: color .3s; }
 .hero-journey-link:hover { color: #fff; }

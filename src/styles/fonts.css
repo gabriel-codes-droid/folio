@@ -16,7 +16,7 @@
 }
 
 :root {
-  --font-body: 'Geist', Arial, Helvetica, sans-serif;
+  --font-body: 'Geist Mono', ui-monospace, SFMono-Regular, Consolas, monospace;
   --font-mono: 'Geist Mono', ui-monospace, SFMono-Regular, Consolas, monospace;
 }
 

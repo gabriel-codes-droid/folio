@@ -6,11 +6,9 @@ import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import * as THREE from 'three';
 import { phaseForProgress, smooth, pacedJourneyProgress } from './journey';
-import ControlCubeField from './ControlCubeField';
 import TacticalAstronaut from './TacticalAstronaut';
-import MoonScene from './MoonScene';
 import SleepModule from './SleepModule';
-import DistantDebris from './DistantDebris';
+import { advanceProgress, availableProgress } from './sceneStages';
 import SceneReady, { AssetProgress, reportBoot } from './SceneReady';
 import {
   HOP_WAYPOINTS,
@@ -135,12 +133,36 @@ class SceneErrorBoundary extends Component {
   static getDerivedStateFromError() { return { failed: true }; }
   componentDidCatch(error) {
     console.error('Scene loading failed', error);
-    reportBoot('error', 0, 'An asset could not load. Reload to retry.');
+    if (this.props.onError) this.props.onError();
+    else reportBoot('error', 0, 'An asset could not load. Reload to retry.');
   }
   render() { return this.state.failed ? null : this.props.children; }
 }
 
-const SpaceCanvas = ({ initialProgress = 0, onPrepared }) => {
+function StagePlayback({ desired, actual, readyStages, onPhase, onBuffer }) {
+  const last = useRef({ phase: 'sleeping', waiting: false });
+  useFrame((_, delta) => {
+    actual.current = advanceProgress(actual.current, desired.current, readyStages, delta);
+    const phase = phaseForProgress(actual.current);
+    const waiting = desired.current > availableProgress(desired.current, readyStages) + 0.001;
+    if (phase !== last.current.phase) { last.current.phase = phase; onPhase(phase); }
+    if (waiting !== last.current.waiting) { last.current.waiting = waiting; onBuffer(waiting); }
+  }, -2);
+  return null;
+}
+
+const SpaceCanvas = ({ initialProgress = 0, onStagePrepared, stages, readyStages, stageStatus, onRetry }) => {
+  const ControlCubeField = stages.route;
+  const MoonScene = stages.moon;
+  const DistantDebris = stages.debris;
+  const warmingStage = Object.keys(stages).some(stage => !readyStages[stage]);
+  const desiredProgressRef = useRef(0);
+  const routeRoot = useRef(null);
+  const moonRoot = useRef(null);
+  const debrisRoot = useRef(null);
+  const [buffering, setBuffering] = useState(false);
+  const [stageError, setStageError] = useState(false);
+  const handleStageError = useCallback(() => setStageError(true), []);
   const scrollTrackRef = useRef(null);
   const [astronautPhase, setAstronautPhase] = useState('sleeping');
   const scrollProgressRef = useRef(0);
@@ -180,7 +202,7 @@ const SpaceCanvas = ({ initialProgress = 0, onPrepared }) => {
   // warm-up work SceneReady does (texture upload, shader compile, GPU fence
   // sync) is untouched, only the visual loading screen and its event
   // hand-off are gone.
-  const handleReady = useCallback(() => { setReady(true); onPrepared?.(); }, [onPrepared]);
+  const handleReady = useCallback(() => { setReady(true); onStagePrepared('opening'); }, [onStagePrepared]);
 
   useEffect(() => {
     if (!ready || !scrollTrackRef.current) return;
@@ -192,8 +214,7 @@ const SpaceCanvas = ({ initialProgress = 0, onPrepared }) => {
       ease: 'none',
       onUpdate: () => {
         const progress = pacedJourneyProgress(playhead.progress);
-        scrollProgressRef.current = progress;
-        setAstronautPhase(phaseForProgress(progress));
+        desiredProgressRef.current = progress;
       },
       scrollTrigger: {
         trigger: scrollTrackRef.current,
@@ -216,12 +237,17 @@ const SpaceCanvas = ({ initialProgress = 0, onPrepared }) => {
 
   return (
     <>
-      <section ref={regionRef} className="space-region" id="space-experience" aria-label="Interactive project journey">
+      <section ref={regionRef} className="space-region" id="space-experience" aria-label="Interactive project journey" data-ready-stages={JSON.stringify(readyStages)} data-phase={astronautPhase}>
       <div className="space-stage">
         {!ready && <div className="space-status" role="status">{preparation.error || 'PREPARING EXPERIENCE'}<progress value={preparation.progress} max="1" aria-label="Preparing the 3D experience" /><span>{Math.floor(preparation.progress * 100)}%</span>{preparation.error && <button onClick={() => window.location.reload()}>Retry experience</button>}</div>}
+        {ready && buffering && <div className="stage-buffer" role="status">
+          <span>{stageError ? 'This stage needs a reload.' : stageStatus.error || `Preparing ${!readyStages.route ? 'the cube route' : 'the planets'}… ${Math.floor(stageStatus.progress * 100)}%`}</span>
+          {stageError ? <button onClick={() => window.location.reload()}>Reload scene</button> : stageStatus.error && <button onClick={onRetry}>Retry stage</button>}
+          <a href="#contact">Get in touch ↗</a>
+        </div>}
         <SceneErrorBoundary>
         <Canvas
-          frameloop={!ready || inView ? 'always' : 'never'}
+          frameloop={!ready || inView || warmingStage ? 'always' : 'never'}
           camera={{ position: [0, 0, 6], fov: 52 }}
           gl={{ antialias: true, alpha: true, powerPreference: 'high-performance' }}
           dpr={[1, 1.5]}
@@ -244,9 +270,10 @@ const SpaceCanvas = ({ initialProgress = 0, onPrepared }) => {
                 visible star background is unchanged; no 73 MB EXR download. */}
             <Environment files="/models/night-sky.hdr" background={false} />
 
-            {/* Keep the cube field mounted from the opening frame. The route
-                should already exist in the space while the mech sleeps and
-                wakes; it must not pop in at the idle→hop boundary. */}
+            {/* Prepare the route while the mech sleeps. StagePlayback holds
+                the wake-up beat until these cubes are fully GPU-ready. */}
+            {ControlCubeField && <SceneErrorBoundary onError={handleStageError}><Suspense fallback={null}>
+            <group ref={routeRoot}>
             <ControlCubeField
               visible={
                 astronautPhase === 'sleeping'
@@ -264,6 +291,9 @@ const SpaceCanvas = ({ initialProgress = 0, onPrepared }) => {
               }
               firstPlatformOnly={false}
             />
+            <SceneReady quiet rootRef={routeRoot} onError={handleStageError} onReady={() => onStagePrepared('route')} />
+            </group>
+            </Suspense></SceneErrorBoundary>}
 
             {/* The mech sleeps inside the middle of this ISS module scan,
                 replacing the earlier crash-site-ground approach. Visible
@@ -287,6 +317,8 @@ const SpaceCanvas = ({ initialProgress = 0, onPrepared }) => {
                 had no home to render from anymore. Re-wired standalone,
                 visible through the same continuous opening stretch as the
                 cube field and sleep module. */}
+            {DistantDebris && <SceneErrorBoundary onError={handleStageError}><Suspense fallback={null}>
+            <group ref={debrisRoot}>
             <DistantDebris
               visible={
                 astronautPhase === 'sleeping'
@@ -296,10 +328,13 @@ const SpaceCanvas = ({ initialProgress = 0, onPrepared }) => {
                 || astronautPhase === 'launching'
               }
             />
+            <SceneReady quiet rootRef={debrisRoot} onError={handleStageError} onReady={() => onStagePrepared('debris')} />
+            </group>
+            </Suspense></SceneErrorBoundary>}
 
             {/* The moon/planets enter after the cube route and launch beat.
                 Solid surfaces occlude the star background throughout flight. */}
-            <group
+            {MoonScene && <SceneErrorBoundary onError={handleStageError}><Suspense fallback={null}><group ref={moonRoot}><group
               visible={
                 astronautPhase === 'flying'
                 || astronautPhase === 'landing'
@@ -318,7 +353,11 @@ const SpaceCanvas = ({ initialProgress = 0, onPrepared }) => {
                 }
               />
             </group>
+            <SceneReady quiet rootRef={moonRoot} onError={handleStageError} onReady={() => onStagePrepared('moon')} />
+            </group>
+            </Suspense></SceneErrorBoundary>}
 
+            <StagePlayback desired={desiredProgressRef} actual={scrollProgressRef} readyStages={readyStages} onPhase={setAstronautPhase} onBuffer={setBuffering} />
             <JourneyController progressRef={scrollProgressRef} phase={astronautPhase} />
 
           <SceneReady onReady={handleReady} />

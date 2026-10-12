@@ -25,17 +25,15 @@ export function AssetProgress() {
   return null;
 }
 
-// Mounted inside the ONE shared Suspense boundary: every model, texture,
-// environment and FBX has resolved, and the retargeted clips are constructed.
-export default function SceneReady({ onReady }) {
+// Each stage has its own Suspense boundary. Warm only its new resources;
+// preparing a later stage must not recompile the entire opening again.
+export default function SceneReady({ onReady, quiet = false, onError, rootRef }) {
   const { gl, scene, camera } = useThree();
   const prepared = useRef(false);
   const frames = useRef(0);
-  // Keep the loading HUD up for a short settled window after compilation.
-  // The first few frames can still upload post-processing/bloom resources,
-  // which otherwise makes the hand-off feel like a hitch even though all
-  // network assets have already finished loading.
-  const STABILIZATION_FRAMES = 24;
+  // A few normal frames initialize post-processing. The GPU fence below,
+  // rather than a long frame-count delay, determines actual readiness.
+  const STABILIZATION_FRAMES = 3;
   const fence = useRef(null);
   const finished = useRef(false);
 
@@ -43,15 +41,16 @@ export default function SceneReady({ onReady }) {
     let cancelled = false;
     const frame = () => new Promise(resolve => requestAnimationFrame(resolve));
     async function prepare() {
-      reportBoot('preparing', 0.82);
+      if (!quiet) reportBoot('preparing', 0.82);
       // CSS backgrounds are outside Three's loading manager.
       const background = new Image();
       background.src = '/images/stars-clean.png';
       await background.decode();
       await frame(); // allow the environment and bone attachments to commit
       if (cancelled) return;
+      const root = rootRef?.current || scene;
       const textures = new Set();
-      scene.traverse(object => {
+      root.traverse(object => {
         const materials = Array.isArray(object.material) ? object.material : [object.material];
         for (const material of materials) {
           if (!material) continue;
@@ -63,7 +62,7 @@ export default function SceneReady({ onReady }) {
       for (const texture of textures) {
         if (cancelled) return;
         gl.initTexture(texture);
-        reportBoot('preparing', 0.82 + (++uploaded / textures.size) * 0.08);
+        if (!quiet) reportBoot('preparing', 0.82 + (++uploaded / textures.size) * 0.08);
         // Upload small textures together instead of paying a full rendered
         // frame per texture. Yield after a bounded CPU slice for the loader.
         if (performance.now() - batchStarted >= 4) {
@@ -74,14 +73,14 @@ export default function SceneReady({ onReady }) {
       // Include hidden moon/planets/cubes/boot thrusters in compilation. Restore
       // visibility before yielding so none can flash into another scene.
       const objects = [];
-      scene.traverse(object => {
+      root.traverse(object => {
         objects.push([object, object.visible, object.frustumCulled]);
         object.visible = true;
         object.frustumCulled = false;
       });
       let compilation;
       try {
-        compilation = gl.compileAsync(scene, camera);
+        compilation = gl.compileAsync(root, camera, scene);
       } finally {
         for (const [object, visible, culled] of objects) {
           object.visible = visible;
@@ -106,13 +105,14 @@ export default function SceneReady({ onReady }) {
         }
         target.dispose();
       }
-      reportBoot('rendering', 0.95);
+      if (!quiet) reportBoot('rendering', 0.95);
       prepared.current = true;
     }
     prepare().catch(error => {
       if (!cancelled) {
         console.error('Scene preparation failed', error);
-        reportBoot('error', 0, 'Scene preparation failed. Reload to retry.');
+        if (onError) onError(error);
+        else reportBoot('error', 0, 'Scene preparation failed. Reload to retry.');
       }
     });
     return () => {
@@ -126,7 +126,7 @@ export default function SceneReady({ onReady }) {
     // Suspense resolves the scene assets; also require the loading manager
     // to be idle before the settled-frame/GPU gate can release the curtain.
     const loading = useProgress.getState();
-    if (loading.errors.length) {
+    if (!quiet && loading.errors.length) {
       finished.current = true;
       reportBoot('error', 0, 'An asset could not load. Reload to retry.');
       return;
@@ -151,14 +151,15 @@ export default function SceneReady({ onReady }) {
     if (status === context.TIMEOUT_EXPIRED) return;
     if (status === context.WAIT_FAILED) {
       finished.current = true;
-      reportBoot('error', 0, 'Graphics preparation failed. Reload to retry.');
+      if (onError) onError(new Error('GPU preparation failed'));
+      else reportBoot('error', 0, 'Graphics preparation failed. Reload to retry.');
       return;
     }
     context.deleteSync(fence.current);
     fence.current = null;
     finished.current = true;
     onReady();
-    reportBoot('ready', 1);
+    if (!quiet) reportBoot('ready', 1);
   });
   return null;
 }

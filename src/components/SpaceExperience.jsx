@@ -1,63 +1,68 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Cache } from 'three';
-import { SCENE_ASSETS } from '../data/sceneAssets';
 import { createAssetDownloads } from './assetDownloads';
+import { STAGE_ASSETS, STAGE_ORDER } from './sceneStages';
 
-const downloads = createAssetDownloads();
-let preparation;
-const listeners = new Set();
-let progress = 0;
-function prepareScene() {
-  if (!preparation) {
+const imports = {
+  opening: () => import('./SpaceCanvas'),
+  route: () => import('./ControlCubeField'),
+  moon: () => import('./MoonScene'),
+  debris: () => import('./DistantDebris'),
+};
+const jobs = new Map();
+function prepareStage(stage, onProgress) {
+  if (!jobs.has(stage)) jobs.set(stage, { downloads: createAssetDownloads() });
+  const job = jobs.get(stage);
+  if (!job.promise) {
     Cache.enabled = true;
-    preparation = downloads.prepare(SCENE_ASSETS, {
-      // Vercel's edge can serve several immutable model files concurrently;
-      // keep the loader's default of two for constrained callers, while the
-      // portfolio warms its scene with a third stream to reduce request wait.
+    job.promise = job.downloads.prepare(STAGE_ASSETS[stage], {
       concurrency: 3,
-      onProgress: value => { progress = value; for (const listener of listeners) listener(value); },
+      onProgress,
       onAsset: (asset, buffer) => Cache.add(`file:${asset.url}`, buffer),
-    }).then(() => import('./SpaceCanvas')).catch(error => {
-      preparation = null;
-      throw error;
-    });
+    }).then(imports[stage]).catch(error => { job.promise = null; throw error; });
   }
-  return preparation;
-}
-
-function releaseDownloads() {
-  downloads.clear();
-  for (const asset of SCENE_ASSETS) Cache.remove(`file:${asset.url}`);
+  return job.promise;
 }
 
 export default function SpaceExperience() {
-  const [Scene, setScene] = useState(null);
-  const [status, setStatus] = useState({ progress, error: '' });
+  const [components, setComponents] = useState({});
+  const [readyStages, setReadyStages] = useState({});
+  const [stage, setStage] = useState('opening');
+  const [status, setStatus] = useState({ progress: 0, error: '' });
   const [attempt, setAttempt] = useState(0);
   useEffect(() => {
+    if (!stage) return;
     let active = true;
-    const update = value => { if (active) setStatus({ progress: value, error: '' }); };
-    listeners.add(update);
-    update(progress);
-    prepareScene().then(module => { if (active) setScene(() => module.default); }).catch(error => {
-      console.error('Scene asset download failed', error);
-      if (active) setStatus(previous => ({ ...previous, error: error.message }));
-    });
-    return () => { active = false; listeners.delete(update); };
-  }, [attempt]);
+    setStatus({ progress: 0, error: '' });
+    prepareStage(stage, progress => { if (active) setStatus({ progress, error: '' }); })
+      .then(module => { if (active) setComponents(previous => ({ ...previous, [stage]: module.default })); })
+      .catch(error => {
+        console.error(`${stage} preparation failed`, error);
+        if (active) setStatus(previous => ({ ...previous, error: 'This stage could not load. Please retry.' }));
+      });
+    return () => { active = false; };
+  }, [stage, attempt]);
 
-  if (Scene) return <Scene initialProgress={0.75} onPrepared={releaseDownloads} />;
-  // Preserve exactly the scene's scroll footprint while downloading. Only
-  // import the model components after their binary data is cached, so their
-  // module-scope preloads cannot start a competing request avalanche.
+  const onPrepared = useCallback(completed => {
+    performance.mark(`space:${completed}:ready`);
+    jobs.get(completed)?.downloads.clear();
+    for (const asset of STAGE_ASSETS[completed]) Cache.remove(`file:${asset.url}`);
+    setReadyStages(previous => ({ ...previous, [completed]: Math.round(performance.now()) }));
+    setStage(current => current === completed ? STAGE_ORDER[STAGE_ORDER.indexOf(completed) + 1] : current);
+  }, []);
+  const retry = () => setAttempt(value => value + 1);
+  const Scene = components.opening;
+  if (Scene) return <Scene initialProgress={0.75} onStagePrepared={onPrepared}
+    stages={components} readyStages={readyStages} stageStatus={status} onRetry={retry} />;
   return (
     <section className="space-region" id="space-experience" aria-label="Interactive project journey">
       <div className="space-stage">
         <div className="space-status" role="status">
-          {status.error || 'PREPARING EXPERIENCE'}
-          <progress value={status.progress * 0.75} max="1" aria-label="Preparing the 3D experience" />
+          {status.error || 'PREPARING THE SHUTTLE'}
+          <progress value={status.progress * 0.75} max="1" aria-label="Preparing the opening scene" />
           <span>{Math.floor(status.progress * 75)}%</span>
-          {status.error && <button onClick={() => setAttempt(value => value + 1)}>Retry experience</button>}
+          <a href="#contact">Get in touch while space prepares ↗</a>
+          {status.error && <button onClick={retry}>Retry experience</button>}
         </div>
       </div>
       <div style={{ height: '520vh' }} />
