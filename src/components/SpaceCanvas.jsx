@@ -6,6 +6,7 @@ import * as THREE from 'three';
 import { phaseForProgress, spaceJourneyProgress, sceneExitInset, sampleArrival, sampleJourney, sampleGuide, smooth } from './journey';
 import { advanceProgress, availableProgress } from './sceneStages';
 import TacticalAstronaut from './TacticalAstronaut';
+import { presentationNearDescription } from './presentation';
 import SceneReady, { AssetProgress, reportBoot } from './SceneReady';
 import { MOON_CENTER, MOON_RADIUS, GUIDE_CAMERA_POSITION, GUIDE_CAMERA_LOOK,
   GALLERY_CAMERA_POSITION, GALLERY_CAMERA_LOOK, JOURNEY_SCROLL_HEIGHT } from './sceneConstants';
@@ -37,6 +38,7 @@ function GuideController({ progressRef, phase, viewRef }) {
   const { camera } = useThree();
   const worldPosition = useRef(new THREE.Vector3());
   const yawRef = useRef(0);
+  const presentationRef = useRef({ weight: 0, side: 1 });
   const departure = useRef(new THREE.Vector3());
   const lastProgress = useRef(-1);
   const guide = useRef([0.34, 0.80]);
@@ -44,6 +46,10 @@ function GuideController({ progressRef, phase, viewRef }) {
   useFrame((state, delta) => {
     const p = progressRef.current;
     const view = viewRef.current;
+    const presentation = view.presentation || { weight: 0, side: 1 };
+    const presentationEase = 1 - Math.exp(-Math.min(delta, 0.05) * 3.5);
+    presentationRef.current.weight += ((p === 0 ? presentation.weight : 0) - presentationRef.current.weight) * presentationEase;
+    presentationRef.current.side = presentation.side;
     const fov = view.compact ? 60 : 52;
     if (camera.fov !== fov) { camera.fov = fov; camera.updateProjectionMatrix(); }
     scratch.finalCamera.z = view.compact ? 21 : GALLERY_CAMERA_POSITION[2];
@@ -63,14 +69,14 @@ function GuideController({ progressRef, phase, viewRef }) {
         .unproject(camera).sub(camera.position).normalize();
       worldPosition.current.copy(camera.position).addScaledVector(scratch.ray, view.compact ? 9 : 7.5);
       departure.current.copy(worldPosition.current);
-      yawRef.current = -0.12;
+      yawRef.current = -0.12 + presentationRef.current.side * presentationRef.current.weight * 0.22;
     } else {
       yawRef.current = sampleJourney(p, worldPosition.current, departure.current.toArray());
     }
     lastProgress.current = p;
   }, -3);
   return <TacticalAstronaut phase={phase} scale={1}
-    journeyProgressRef={progressRef} worldPositionRef={worldPosition} controlledYawRef={yawRef} />;
+    journeyProgressRef={progressRef} worldPositionRef={worldPosition} controlledYawRef={yawRef} presentationRef={presentationRef} />;
 }
 
 function useMemoVectors() {
@@ -124,7 +130,10 @@ export default function SpaceCanvas({ initialProgress = 0, onStagePrepared, stag
         (services?.bottom || 0) + scroll, (work?.top || 0) + scroll + height * 0.4];
       for (let i = 1; i < stops.length; i++) stops[i] = Math.max(stops[i], stops[i - 1] + 1);
       const compact = window.innerWidth < 700;
-      viewRef.current = { guide: sampleGuide(scroll, stops, compact), compact };
+      const guide = sampleGuide(scroll, stops, compact);
+      const descriptions = [...document.querySelectorAll('.hero-copy, .capability article')].map(element => element.getBoundingClientRect());
+      viewRef.current = { guide, compact,
+        presentation: presentationNearDescription(guide, descriptions, window.innerWidth, height) };
       desired.current = spaceJourneyProgress(section.top, section.height, height);
       // Clip the fixed canvas at the section boundary as the following
       // editorial content enters. Update its style without frame rerenders.

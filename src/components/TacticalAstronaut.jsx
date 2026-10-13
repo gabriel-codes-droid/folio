@@ -4,6 +4,7 @@ import { useFBX, useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
 import { sampleJourney, sampleArrival, clamp, smooth } from './journey';
 import { sampleCharacterPose } from './characterPose';
+import { PRESENTATION_CHAINS, presentationDirection } from './presentation';
 import { clone as cloneSkinnedScene } from 'three/examples/jsm/utils/SkeletonUtils.js';
 import {
   MOON_SEAT_POSITION,
@@ -109,7 +110,7 @@ function createBootFlame() {
   return group;
 }
 
-export default function TacticalAstronaut({ phase, position = [0, 0, 0], scale = 1, journeyProgress = 0, journeyProgressRef, worldPositionRef, controlledYawRef }) {
+export default function TacticalAstronaut({ phase, position = [0, 0, 0], scale = 1, journeyProgress = 0, journeyProgressRef, worldPositionRef, controlledYawRef, presentationRef }) {
   const group = useRef(null);
   const { scene } = useGLTF(ASTRONAUT_MODEL);
   const astronaut = useMemo(() => {
@@ -199,7 +200,25 @@ export default function TacticalAstronaut({ phase, position = [0, 0, 0], scale =
     inverseParentWorld: new THREE.Quaternion(),
     wrapperWorld: new THREE.Quaternion(),
     floorLeg: new THREE.Quaternion(),
+    presentation: new THREE.Quaternion(),
+    presentationYaw: new THREE.Quaternion(),
   }), []);
+  const presentationPoses = useMemo(() => {
+    astronaut.updateMatrixWorld(true);
+    const poses = { 1: {}, '-1': {} };
+    const start = new THREE.Vector3(), end = new THREE.Vector3();
+    for (const [name, childName] of Object.entries(PRESENTATION_CHAINS)) {
+      const bone = targetBones[name], child = targetBones[childName];
+      if (!bone || !child) continue;
+      const direction = child.getWorldPosition(end).sub(bone.getWorldPosition(start)).normalize().clone();
+      for (const side of [1, -1]) {
+        poses[side][name] = new THREE.Quaternion()
+          .setFromUnitVectors(direction, new THREE.Vector3(...presentationDirection(name, side)).normalize())
+          .multiply(targetRestWorld[name]);
+      }
+    }
+    return poses;
+  }, [astronaut, targetBones, targetRestWorld]);
   const targetPoseWorld = useRef({});
   const sourceMixer = useMemo(() => new THREE.AnimationMixer(sourceRig), [sourceRig]);
   const actions = useMemo(() => ({
@@ -265,6 +284,9 @@ export default function TacticalAstronaut({ phase, position = [0, 0, 0], scale =
     // Give the introductory guide a gentle, continuous float even when
     // visitors stop scrolling. Fade it out before the authored descent.
     const hoverWeight = 1 - smooth(progress / 0.06);
+    const presentationWeight = (presentationRef?.current.weight || 0) * hoverWeight;
+    const presentationSide = presentationRef?.current.side || 1;
+    poseScratch.presentationYaw.setFromAxisAngle(THREE.Object3D.DEFAULT_UP, yaw);
     group.current.position.x += Math.sin(t * 0.9) * 0.065 * hoverWeight;
     group.current.position.y += Math.sin(t * 1.55) * 0.18 * hoverWeight;
     group.current.rotation.set(
@@ -303,6 +325,12 @@ export default function TacticalAstronaut({ phase, position = [0, 0, 0], scale =
         .copy(poseScratch.sourceDeltaWorld)
         .multiply(targetBaseWorld)
         .premultiply(poseScratch.wrapperWorld);
+
+      const presenting = presentationPoses[presentationSide][targetName];
+      if (presenting && presentationWeight > 0) {
+        poseScratch.presentation.copy(presenting).premultiply(poseScratch.presentationYaw);
+        poseScratch.desiredTargetWorld.slerp(poseScratch.presentation, presentationWeight);
+      }
 
       // The supplied sit clip assumes a chair. Fold both legs in the SAME
       // character-space plane for the moon floor; local bone axes differ
