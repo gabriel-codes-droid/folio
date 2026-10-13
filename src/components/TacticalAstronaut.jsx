@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { useFBX, useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
-import { sampleJourney, smooth, clamp } from './journey';
+import { sampleJourney, sampleArrival, smooth, clamp } from './journey';
 import { clone as cloneSkinnedScene } from 'three/examples/jsm/utils/SkeletonUtils.js';
 import {
   MOON_SEAT_POSITION,
@@ -179,9 +179,6 @@ export default function TacticalAstronaut({ phase, position = [0, 0, 0], scale =
     return result;
   }, [astronaut]);
 
-  const sourceRestLocal = useMemo(() => Object.fromEntries(
-    Object.entries(sourceBones).map(([name, bone]) => [name, bone.quaternion.clone()]),
-  ), [sourceBones]);
   const sourceRestWorld = useMemo(() => {
     sourceRig.updateMatrixWorld(true);
     return Object.fromEntries(Object.entries(sourceBones).map(([name, bone]) => {
@@ -226,6 +223,9 @@ export default function TacticalAstronaut({ phase, position = [0, 0, 0], scale =
   useEffect(() => {
     const action = actions?.[phase];
     if (!action) return;
+    // Arrival actions are sampled and weighted together in useFrame. Resetting
+    // them here would restart the sitting pose when crossing this boundary.
+    if (phase === 'landing' || phase === 'seated') return;
     // Previously called .stop() on every action here, which instantly halts
     // and resets ALL of them — including whichever one the PREVIOUS effect's
     // cleanup had just started fading out via fadeOut(0.12) a moment earlier.
@@ -292,7 +292,8 @@ export default function TacticalAstronaut({ phase, position = [0, 0, 0], scale =
     const yaw = sampleJourney(progress, group.current.position);
     const wake = smooth((progress - 0.08) / 0.10);
     const lying = phase === 'sleeping' ? 1 : phase === 'waking' ? 1 - wake : 0;
-    const seatedWeight = phase === 'seated' ? 1 : phase === 'landing' ? smooth((progress - 0.84) / 0.04) : 0;
+    const arrival = sampleArrival(progress);
+    const seatedWeight = arrival.seatedWeight;
     const flightLean = phase === 'flying'
       ? Math.sin(clamp((progress - 0.54) / 0.24) * Math.PI) * 0.38 : 0;
     // The stroke/shaking-head FBX is already lying down; another 90-degree
@@ -302,10 +303,9 @@ export default function TacticalAstronaut({ phase, position = [0, 0, 0], scale =
 
     group.current.getWorldQuaternion(poseScratch.wrapperWorld);
 
-    // Reset source bones before advancing the animation.
-    BONE_ENTRIES.forEach(([sourceName]) => {
-      if (sourceBones[sourceName] && sourceRestLocal[sourceName]) sourceBones[sourceName].quaternion.copy(sourceRestLocal[sourceName]);
-    });
+    // Let AnimationMixer own the source pose. Resetting bones each frame
+    // breaks frozen scroll samples: unchanged mixer values are not rewritten,
+    // so a settled seated pose would revert to the bind pose.
     // Sample one-shot and hopping clips from the same scroll playhead as
     // their world motion. No elapsed-time loop can run ahead of the route.
     const scroll = journeyProgressRef?.current ?? journeyProgress;
@@ -326,10 +326,28 @@ export default function TacticalAstronaut({ phase, position = [0, 0, 0], scale =
     } else {
       actions.sleeping.stopFading().setEffectiveWeight(0);
     }
-    if (phase === 'landing') {
-      actions.landing.stopFading().setEffectiveWeight(1 - seatedWeight);
-      actions.seated.enabled = true;
-      actions.seated.stopFading().setEffectiveWeight(seatedWeight).play();
+    if (progress >= 0.54) {
+      // Sampling the same clip times and blend weights in both directions
+      // makes reverse scrolling retrace the landing instead of replaying it.
+      const flightTime = clamp((progress - 0.54) / 0.24);
+      const weights = {
+        flying: progress < 0.78 ? 1 : arrival.flightWeight,
+        landing: arrival.landingWeight,
+        seated: seatedWeight,
+      };
+      const times = { flying: flightTime, landing: arrival.landingTime, seated: arrival.seatedTime };
+      for (const [name, clipAction] of Object.entries(actions)) {
+        clipAction.stopFading().setEffectiveWeight(weights[name] || 0);
+        if (name in weights) {
+          clipAction.enabled = true;
+          clipAction.paused = false;
+          clipAction.setLoop(THREE.LoopOnce, 1);
+          clipAction.clampWhenFinished = true;
+          clipAction.setEffectiveTimeScale(0);
+          clipAction.time = times[name] * Math.max(0, clipAction.getClip().duration - 0.001);
+          clipAction.play();
+        }
+      }
     } else if (phase !== 'seated') {
       actions.seated.stopFading().setEffectiveWeight(0);
     }
@@ -395,7 +413,8 @@ export default function TacticalAstronaut({ phase, position = [0, 0, 0], scale =
         left.getWorldPosition(movementScratch.leftToe);
         right.getWorldPosition(movementScratch.rightToe);
         const lowest = Math.min(movementScratch.leftToe.y, movementScratch.rightToe.y);
-        group.current.position.y += group.current.position.y + 0.07 - lowest;
+        const contactWeight = phase === 'landing' ? (1 - arrival.flightWeight) * (1 - seatedWeight) : 1;
+        group.current.position.y += (group.current.position.y + 0.07 - lowest) * contactWeight;
         group.current.updateMatrixWorld(true);
       }
     }

@@ -5,7 +5,7 @@ import { Suspense, useRef, useState, useEffect, useCallback, Component } from 'r
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import * as THREE from 'three';
-import { phaseForProgress, smooth, pacedJourneyProgress } from './journey';
+import { phaseForProgress, smooth, pacedJourneyProgress, sampleArrival } from './journey';
 import TacticalAstronaut from './TacticalAstronaut';
 import SleepModule from './SleepModule';
 import { advanceProgress, availableProgress } from './sceneStages';
@@ -81,7 +81,7 @@ function JourneyController({ progressRef, phase }) {
       const reveal = smooth((progress - 0.18) / 0.12);
       targetPosition.current.lerpVectors(sleepCamPos.current, heroCamPos.current, reveal);
       targetLook.current.lerpVectors(sleepCamLook.current, heroCamLook.current, reveal);
-    } else if (progress < 0.78) {
+    } else if (progress < 0.88) {
       // Show the hop route from a front/three-quarter cinematic angle. The
       // mech faces the viewer as it lands on each cube, then its yaw turns
       // toward the planets during flight. Keeping the camera in front avoids
@@ -99,7 +99,7 @@ function JourneyController({ progressRef, phase }) {
       const chaseAnchor = progress < 0.46 ? sleepCamPos.current : heroCamPos.current;
       const chaseBlend = smooth((progress - chaseStart) / 0.06);
       targetPosition.current.lerpVectors(chaseAnchor, targetPosition.current, chaseBlend);
-      const moonBlend = smooth((progress - 0.70) / 0.18);
+      const moonBlend = sampleArrival(progress).cameraBlend;
       targetPosition.current.lerp(moonCamPos.current, moonBlend);
       targetLook.current.lerp(moonCamLook.current, moonBlend);
     } else {

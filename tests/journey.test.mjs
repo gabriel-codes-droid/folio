@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { Vector3 } from 'three';
-import { sampleJourney, phaseForProgress, pacedJourneyProgress } from '../src/components/journey.js';
+import { sampleJourney, sampleArrival, phaseForProgress, pacedJourneyProgress } from '../src/components/journey.js';
 import { HOP_WAYPOINTS, MOON_SEAT_POSITION, PLANET_ROW_Z } from '../src/components/sceneConstants.js';
 
 test('slower hopping keeps the scroll playhead continuous, monotonic and complete', () => {
@@ -57,4 +57,27 @@ test('reverse scrolling is deterministic and the final pose faces the planets', 
   const planets = new Vector3(-position.x, 0, PLANET_ROW_Z - position.z).normalize();
   assert.ok(direction.dot(planets) > 0.9999);
   assert.equal(phaseForProgress(1), 'seated');
+});
+
+test('touchdown completes before sitting and arrival blend remains continuous', () => {
+  assert.equal(sampleArrival(0.78).flightWeight, 1);
+  const touchdown = sampleArrival(0.835);
+  assert.ok(Math.abs(touchdown.touchdown - 1) < 1e-12);
+  assert.equal(touchdown.seatedWeight, 0);
+  assert.ok(Math.abs(sampleArrival(0.88).seatedWeight - 1) < 1e-12);
+  for (let i = 0; i <= 100; i++) {
+    const p = 0.78 + i * 0.001;
+    const a = sampleArrival(p), b = sampleArrival(p + 0.000001);
+    assert.ok(Math.abs(a.flightWeight + a.landingWeight + a.seatedWeight - 1) < 1e-9);
+    assert.ok(Math.abs(b.cameraBlend - a.cameraBlend) < 0.0001);
+    assert.ok(Math.abs(b.seatedWeight - a.seatedWeight) < 0.0001);
+  }
+});
+
+test('arrival pose sampling retraces exactly when scrolling backward', () => {
+  const forward = Array.from({length: 101}, (_, i) => sampleArrival(0.78 + i * 0.001));
+  for (let i = 100; i >= 0; i--) assert.deepEqual(sampleArrival(0.78 + i * 0.001), forward[i]);
+  const position = new Vector3();
+  sampleJourney(0.835, position);
+  assert.ok(position.distanceTo(new Vector3(...MOON_SEAT_POSITION)) < 1e-9);
 });

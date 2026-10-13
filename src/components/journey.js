@@ -12,6 +12,23 @@ export const PHASE_BANDS = [
 ];
 export const clamp = value => Math.min(1, Math.max(0, value));
 export const smooth = value => { const t = clamp(value); return t * t * (3 - 2 * t); };
+
+// One reversible timeline for descent, touchdown and sitting. Finish the
+// descent before folding into the seated pose; no wall-clock restart on entry.
+export function sampleArrival(progress) {
+  const touchdown = smooth((progress - 0.78) / 0.055);
+  const seatedWeight = smooth((progress - 0.835) / 0.045);
+  const flightWeight = 1 - smooth((progress - 0.78) / 0.02);
+  return {
+    touchdown,
+    seatedWeight,
+    flightWeight,
+    landingWeight: (1 - flightWeight) * (1 - seatedWeight),
+    landingTime: clamp((progress - 0.78) / 0.055),
+    seatedTime: seatedWeight,
+    cameraBlend: smooth((progress - 0.70) / 0.18),
+  };
+}
 // Give the hops 50% more scroll distance while retaining the authored camera,
 // pose and world-path timeline. All consumers receive this same playhead.
 export function pacedJourneyProgress(scroll) {
@@ -70,6 +87,6 @@ export function sampleJourney(progress, position) {
     return HOP_FACING_YAW + turn * t;
   }
   position.fromArray(MOON_SEAT_POSITION);
-  if (p < 0.88) position.y += 1.2 * (1 - smooth((p - 0.78) / 0.10));
+  if (p < 0.88) position.y += 1.2 * (1 - sampleArrival(p).touchdown);
   return facing;
 }
