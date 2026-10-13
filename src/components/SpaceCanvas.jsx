@@ -39,7 +39,7 @@ function GuideController({ progressRef, phase, viewRef }) {
   const yawRef = useRef(0);
   const departure = useRef(new THREE.Vector3());
   const lastProgress = useRef(-1);
-  const guide = useRef([0.80, 0.49]);
+  const guide = useRef([0.34, 0.80]);
   const scratch = useMemoVectors();
   useFrame((state, delta) => {
     const p = progressRef.current;
@@ -61,7 +61,7 @@ function GuideController({ progressRef, phase, viewRef }) {
       guide.current = guide.current.map((value, axis) => value + (view.guide[axis] - value) * speed);
       scratch.ray.set(guide.current[0] * 2 - 1, 1 - guide.current[1] * 2, 0.5)
         .unproject(camera).sub(camera.position).normalize();
-      worldPosition.current.copy(camera.position).addScaledVector(scratch.ray, view.compact ? 16 : 7.5);
+      worldPosition.current.copy(camera.position).addScaledVector(scratch.ray, view.compact ? 9 : 7.5);
       departure.current.copy(worldPosition.current);
       yawRef.current = -0.12;
     } else {
@@ -86,7 +86,7 @@ export default function SpaceCanvas({ initialProgress = 0, onStagePrepared, stag
   const moonRoot = useRef(null);
   const desired = useRef(0);
   const actual = useRef(0);
-  const viewRef = useRef({ guide: [0.80, 0.49], compact: false });
+  const viewRef = useRef({ guide: [0.34, 0.80], compact: false });
   const [phase, setPhase] = useState('hovering');
   const [active, setActive] = useState(true);
   const [inSpace, setInSpace] = useState(false);

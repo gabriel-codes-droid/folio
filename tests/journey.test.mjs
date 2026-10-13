@@ -14,8 +14,10 @@ test('flight begins when the star field enters and completes at the same exit', 
 
 test('guide glides between section anchors continuously and settles at each stop', () => {
   const stops = [0, 200, 1000, 1400, 2200, 2600];
-  assert.deepEqual(sampleGuide(0, stops), [0.80, 0.49]);
-  assert.deepEqual(sampleGuide(2600, stops), [0.80, 0.48]);
+  assert.deepEqual(sampleGuide(0, stops), [0.34, 0.80]);
+  assert.deepEqual(sampleGuide(2600, stops), [0.24, 0.72]);
+  assert.ok(sampleGuide(1400, stops)[0] > sampleGuide(1000, stops)[0]);
+  assert.ok(sampleGuide(2200, stops)[0] < sampleGuide(1400, stops)[0]);
   for (const boundary of stops.slice(1)) {
     const before = sampleGuide(boundary - 0.001, stops), after = sampleGuide(boundary + 0.001, stops);
     assert.ok(Math.hypot(before[0] - after[0], before[1] - after[1]) < 0.00001);

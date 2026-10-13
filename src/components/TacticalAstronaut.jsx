@@ -203,7 +203,7 @@ export default function TacticalAstronaut({ phase, position = [0, 0, 0], scale =
   const targetPoseWorld = useRef({});
   const sourceMixer = useMemo(() => new THREE.AnimationMixer(sourceRig), [sourceRig]);
   const actions = useMemo(() => ({
-    hovering: sourceMixer.clipAction(idleAsset.animations[0], sourceRig),
+    hovering: sourceMixer.clipAction(flyAsset.animations[0].clone(), sourceRig),
     flying: sourceMixer.clipAction(flyAsset.animations[0], sourceRig),
     landing: sourceMixer.clipAction(landAsset.animations[0], sourceRig),
     seated: sourceMixer.clipAction(sitAsset.animations[0], sourceRig),
@@ -268,7 +268,7 @@ export default function TacticalAstronaut({ phase, position = [0, 0, 0], scale =
     group.current.position.x += Math.sin(t * 0.9) * 0.065 * hoverWeight;
     group.current.position.y += Math.sin(t * 1.55) * 0.18 * hoverWeight;
     group.current.rotation.set(
-      flightLean + Math.sin(t * 1.55 + 0.7) * 0.025 * hoverWeight,
+      flightLean - Math.PI / 2 * hoverWeight + Math.sin(t * 1.55 + 0.7) * 0.025 * hoverWeight,
       yaw + Math.sin(t * 0.9) * 0.045 * hoverWeight,
       Math.sin(t * 0.9 + 0.5) * 0.035 * hoverWeight,
     );
