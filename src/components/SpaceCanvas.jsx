@@ -7,7 +7,6 @@ import { phaseForProgress, pacedJourneyProgress, sampleArrival, sampleJourney, s
 import { advanceProgress, availableProgress } from './sceneStages';
 import TacticalAstronaut from './TacticalAstronaut';
 import SceneReady, { AssetProgress, reportBoot } from './SceneReady';
-import { PROJECTS } from '../data/projects';
 import { MOON_CENTER, MOON_RADIUS, GUIDE_CAMERA_POSITION, GUIDE_CAMERA_LOOK,
   GALLERY_CAMERA_POSITION, GALLERY_CAMERA_LOOK, JOURNEY_SCROLL_HEIGHT } from './sceneConstants';
 
@@ -40,7 +39,7 @@ function GuideController({ progressRef, phase, viewRef }) {
   const yawRef = useRef(0);
   const departure = useRef(new THREE.Vector3());
   const lastProgress = useRef(-1);
-  const guide = useRef([0.88, 0.49]);
+  const guide = useRef([0.80, 0.49]);
   const scratch = useMemoVectors();
   useFrame((state, delta) => {
     const p = progressRef.current;
@@ -62,7 +61,7 @@ function GuideController({ progressRef, phase, viewRef }) {
       guide.current = guide.current.map((value, axis) => value + (view.guide[axis] - value) * speed);
       scratch.ray.set(guide.current[0] * 2 - 1, 1 - guide.current[1] * 2, 0.5)
         .unproject(camera).sub(camera.position).normalize();
-      worldPosition.current.copy(camera.position).addScaledVector(scratch.ray, 10);
+      worldPosition.current.copy(camera.position).addScaledVector(scratch.ray, view.compact ? 16 : 7.5);
       departure.current.copy(worldPosition.current);
       yawRef.current = -0.12;
     } else {
@@ -70,7 +69,7 @@ function GuideController({ progressRef, phase, viewRef }) {
     }
     lastProgress.current = p;
   }, -3);
-  return <TacticalAstronaut phase={phase} scale={viewRef.current.compact ? 0.5 : 0.88}
+  return <TacticalAstronaut phase={phase} scale={1}
     journeyProgressRef={progressRef} worldPositionRef={worldPosition} controlledYawRef={yawRef} />;
 }
 
@@ -87,11 +86,10 @@ export default function SpaceCanvas({ initialProgress = 0, onStagePrepared, stag
   const moonRoot = useRef(null);
   const desired = useRef(0);
   const actual = useRef(0);
-  const viewRef = useRef({ guide: [0.88, 0.49], compact: false });
+  const viewRef = useRef({ guide: [0.80, 0.49], compact: false });
   const [phase, setPhase] = useState('hovering');
   const [active, setActive] = useState(true);
   const [inSpace, setInSpace] = useState(false);
-  const [compact, setCompact] = useState(false);
   const [ready, setReady] = useState(false);
   const [buffering, setBuffering] = useState(false);
   const [stageError, setStageError] = useState(false);
@@ -126,7 +124,6 @@ export default function SpaceCanvas({ initialProgress = 0, onStagePrepared, stag
         (services?.bottom || 0) + scroll, (work?.top || 0) + scroll + height * 0.4];
       for (let i = 1; i < stops.length; i++) stops[i] = Math.max(stops[i], stops[i - 1] + 1);
       const compact = window.innerWidth < 700;
-      setCompact(compact);
       viewRef.current = { guide: sampleGuide(scroll, stops, compact), compact };
       desired.current = pacedJourneyProgress((scroll - top) / Math.max(1, section.height - height));
       setInSpace(section.top <= height * 0.1 && section.bottom >= height * 0.4);
@@ -189,21 +186,14 @@ export default function SpaceCanvas({ initialProgress = 0, onStagePrepared, stag
         {MoonScene && <SceneErrorBoundary onError={handleStageError}><Suspense fallback={null}>
           <group ref={moonRoot}><group visible={inSpace}>
             <MoonScene moonPosition={MOON_CENTER} moonRadius={MOON_RADIUS} planetsVisible
-              labelsVisible={gallery && !compact} onSelect={setSelectedProject} />
+              labelsVisible={gallery} onSelect={setSelectedProject} />
           </group><SceneReady quiet rootRef={moonRoot} onError={handleStageError} onReady={() => onStagePrepared('moon')} /></group>
         </Suspense></SceneErrorBoundary>}
       </Canvas></SceneErrorBoundary>
     </div>
-    {inSpace && active && ready && <div className="journey-ui">
-      {gallery ? <>
-        <p>Select a planet to explore the project.</p>
-        {compact && <div className="mobile-planet-labels" aria-label="Project planets">
-          {PROJECTS.map(project => <button key={project.name} onClick={() => setSelectedProject(project)} aria-label={`View ${project.name} project`}>
-            <span style={{ color: project.color }}>{project.number}</span> {project.title}
-          </button>)}
-        </div>}
-      </> : <button disabled={!readyStages.moon} onClick={skipToProjects}>
-        {readyStages.moon ? 'Skip to projects ↘' : 'Preparing projects…'}</button>}
+    {inSpace && active && ready && !gallery && <div className="journey-ui">
+      <button disabled={!readyStages.moon} onClick={skipToProjects}>
+        {readyStages.moon ? 'Skip to projects ↘' : 'Preparing projects…'}</button>
       {buffering && <div className="stage-buffer" role="status">
         <span>{stageError ? 'Please reload the experience.' : stageStatus.error || `Preparing your destination… ${Math.floor(stageStatus.progress * 100)}%`}</span>
         {stageStatus.error && <button onClick={onRetry}>Retry</button>}

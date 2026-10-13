@@ -13,7 +13,7 @@ test('real FBX poses hold when stopped and retrace on reverse scroll', () => {
   const rig = load('idle');
   const mixer = new AnimationMixer(rig);
   const flight = load('flying').animations[0];
-  const actions = { hovering: mixer.clipAction(flight.clone()), flying: mixer.clipAction(flight), landing: mixer.clipAction(load('landing').animations[0]), seated: mixer.clipAction(load('sitting').animations[0]) };
+  const actions = { hovering: mixer.clipAction(rig.animations[0]), flying: mixer.clipAction(flight), landing: mixer.clipAction(load('landing').animations[0]), seated: mixer.clipAction(load('sitting').animations[0]) };
   const bones = [];
   rig.traverse(object => { if (object.isBone) bones.push(object); });
   const sample = progress => {
@@ -27,6 +27,6 @@ test('real FBX poses hold when stopped and retrace on reverse scroll', () => {
   sampleCharacterPose(actions, 0, 0.1); mixer.update(1 / 60);
   const early = bones.map(bone => bone.quaternion.clone().normalize());
   sampleCharacterPose(actions, 0, 0.6); mixer.update(1 / 60);
-  assert.ok(bones.some((bone, i) => bone.quaternion.clone().normalize().angleTo(early[i]) > 0.005), 'The guide must animate from the supplied flight clip');
+  assert.ok(bones.some((bone, i) => bone.quaternion.clone().normalize().angleTo(early[i]) > 0.005), 'The upright guide must remain animated');
   mixer.stopAllAction(); mixer.uncacheRoot(rig);
 });

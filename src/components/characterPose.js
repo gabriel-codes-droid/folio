@@ -4,7 +4,8 @@ import { sampleArrival, smooth, clamp } from './journey.js';
 export function sampleCharacterPose(actions, progress, hoverTime = 0.25) {
   const arrival = sampleArrival(progress);
   // Blend the looping guide into the original scroll-sampled flight clip.
-  // Both actions use the same supplied FBX, so crossing into space stays soft.
+  // Upright idle supplies the standing hover; the original flight FBX is
+  // reserved for descent, rather than tilting the guide onto its stomach.
   const guideBlend = 1 - smooth(progress / 0.06);
   const weights = { hovering: arrival.flightWeight * guideBlend,
     flying: arrival.flightWeight * (1 - guideBlend),

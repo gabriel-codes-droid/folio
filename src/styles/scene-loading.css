@@ -9,9 +9,6 @@
 .journey-ui>button{cursor:pointer}.journey-ui>button:disabled{opacity:.5;cursor:default}
 .journey-ui>button:focus-visible{outline:2px solid #b7d7e9;outline-offset:4px}
 .journey-ui .stage-buffer{position:static;transform:none;width:auto;max-width:100%;font-size:10px}
-.mobile-planet-labels{display:grid;grid-template-columns:1fr 1fr;gap:8px;width:min(350px,100%)}
-.mobile-planet-labels button{border:1px solid #b5d5e33d;border-radius:3px;background:#07111bd9;color:#e8f1f5;padding:12px 9px;font:10px var(--font-mono);text-align:left;min-height:48px}
-.mobile-planet-labels button:focus-visible{outline:2px solid #b7d7e9;outline-offset:3px}
 @media(min-width:1000px){.hero .discipline-title{font-size:clamp(68px,8.6vw,138px);max-width:calc(100% - 180px)}}
 @media(max-width:600px){.hero{padding-top:110px}.hero .discipline-title{font-size:clamp(38px,10.2vw,68px)}.journey-ui{right:16px;bottom:20px}.journey-ui>p,.journey-ui>button{font-size:10px}}
 @media(prefers-reduced-motion:reduce){.guide-canvas-shell{transition:none}}

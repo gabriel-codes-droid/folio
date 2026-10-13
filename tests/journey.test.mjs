@@ -6,8 +6,8 @@ import { MOON_SEAT_POSITION, PLANET_ROW_Z } from '../src/components/sceneConstan
 
 test('guide glides between section anchors continuously and settles at each stop', () => {
   const stops = [0, 200, 1000, 1400, 2200, 2600];
-  assert.deepEqual(sampleGuide(0, stops), [0.88, 0.49]);
-  assert.deepEqual(sampleGuide(2600, stops), [0.82, 0.42]);
+  assert.deepEqual(sampleGuide(0, stops), [0.80, 0.49]);
+  assert.deepEqual(sampleGuide(2600, stops), [0.80, 0.48]);
   for (const boundary of stops.slice(1)) {
     const before = sampleGuide(boundary - 0.001, stops), after = sampleGuide(boundary + 0.001, stops);
     assert.ok(Math.hypot(before[0] - after[0], before[1] - after[1]) < 0.00001);

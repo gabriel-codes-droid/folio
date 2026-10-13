@@ -48,8 +48,8 @@ export function sampleJourney(progress, position, departure = [3, MOON_SEAT_POSI
 // Screen positions live in the open areas beside the name and between cards.
 export function sampleGuide(scroll, stops, compact = false) {
   const anchors = compact
-    ? [[0.82, 0.22], [0.92, 0.18], [0.92, 0.18], [0.92, 0.25], [0.92, 0.25], [0.82, 0.40]]
-    : [[0.88, 0.49], [0.96, 0.36], [0.96, 0.36], [0.58, 0.60], [0.58, 0.60], [0.82, 0.42]];
+    ? [[0.78, 0.36], [0.80, 0.32], [0.80, 0.32], [0.80, 0.38], [0.80, 0.38], [0.78, 0.48]]
+    : [[0.80, 0.49], [0.82, 0.45], [0.82, 0.45], [0.58, 0.60], [0.58, 0.60], [0.80, 0.48]];
   for (let i = 0; i < stops.length - 1; i++) {
     if (scroll <= stops[i + 1]) {
       const t = smooth((scroll - stops[i]) / Math.max(1, stops[i + 1] - stops[i]));
