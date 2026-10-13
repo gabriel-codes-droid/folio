@@ -11,6 +11,11 @@ export const SCENE_ASSETS = [
     "version": "55ae483d67bd28c7"
   },
   {
+    "url": "/models/flying.fbx",
+    "bytes": 475712,
+    "version": "ea420f31be9faec8"
+  },
+  {
     "url": "/models/idle.fbx",
     "bytes": 788464,
     "version": "b336d3e3410453a5"

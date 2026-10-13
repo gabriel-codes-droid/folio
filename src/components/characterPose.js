@@ -1,10 +1,15 @@
 import { LoopOnce } from 'three';
-import { sampleArrival } from './journey.js';
+import { sampleArrival, smooth, clamp } from './journey.js';
 
-export function sampleCharacterPose(actions, progress) {
+export function sampleCharacterPose(actions, progress, hoverTime = 0.25) {
   const arrival = sampleArrival(progress);
-  const weights = { hovering: arrival.flightWeight, landing: arrival.landingWeight, seated: arrival.seatedWeight };
-  const times = { hovering: 0.25, landing: arrival.landingTime, seated: arrival.seatedTime };
+  // Blend the looping guide into the original scroll-sampled flight clip.
+  // Both actions use the same supplied FBX, so crossing into space stays soft.
+  const guideBlend = 1 - smooth(progress / 0.06);
+  const weights = { hovering: arrival.flightWeight * guideBlend,
+    flying: arrival.flightWeight * (1 - guideBlend),
+    landing: arrival.landingWeight, seated: arrival.seatedWeight };
+  const times = { hovering: hoverTime, flying: clamp(progress / 0.52), landing: arrival.landingTime, seated: arrival.seatedTime };
   for (const [name, action] of Object.entries(actions)) {
     action.enabled = true;
     action.paused = false;

@@ -9,10 +9,11 @@ test('every unchanged asset belongs to exactly one loading stage', () => {
   assert.equal(new Set(assets.map(asset => asset.url)).size, SCENE_ASSETS.length);
   assert.deepEqual(assets.map(asset => asset.url).sort(), SCENE_ASSETS.map(asset => asset.url).sort());
 });
-test('hover guide stays under 18 MB and retired route assets are absent', () => {
-  assert.ok(STAGE_ASSETS.opening.reduce((sum, asset) => sum + asset.bytes, 0) < 18_000_000);
+test('hover guide stays under 19 MB and retired route assets are absent', () => {
+  assert.ok(STAGE_ASSETS.opening.reduce((sum, asset) => sum + asset.bytes, 0) < 19_000_000);
   assert.equal(STAGE_ORDER.length, 2);
-  assert.ok(!SCENE_ASSETS.some(asset => /cube|wreckage|station|jump|waking|shaking|flying/.test(asset.url)));
+  assert.ok(!SCENE_ASSETS.some(asset => /cube|wreckage|station|jump|waking|shaking/.test(asset.url)));
+  assert.ok(SCENE_ASSETS.some(asset => asset.url.endsWith('/flying.fbx')));
   assert.equal(STAGE_ASSETS.moon.length, 5);
 });
 test('fast scrolling holds the guide until its moon destination is ready', () => {

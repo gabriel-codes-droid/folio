@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { useFBX, useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
-import { sampleJourney, sampleArrival, clamp } from './journey';
+import { sampleJourney, sampleArrival, clamp, smooth } from './journey';
 import { sampleCharacterPose } from './characterPose';
 import { clone as cloneSkinnedScene } from 'three/examples/jsm/utils/SkeletonUtils.js';
 import {
@@ -14,6 +14,7 @@ const CHARACTER_SCALE = 0.68;
 
 useGLTF.preload(ASTRONAUT_MODEL);
 useFBX.preload('/models/idle.fbx');
+useFBX.preload('/models/flying.fbx');
 useFBX.preload('/models/landing.fbx');
 useFBX.preload('/models/sitting.fbx');
 
@@ -152,9 +153,10 @@ export default function TacticalAstronaut({ phase, position = [0, 0, 0], scale =
     return clone;
   }, [scene]);
 
-  // An upright idle source gives hovering a steady torso and relaxed limbs.
-  // Travel is authored in world space, without a jump or somersault clip.
+  // Keep the original flight FBX for the guide and descent. Idle supplies
+  // the same bind rig as the old route, without downloading its jump model.
   const idleAsset = useFBX('/models/idle.fbx');
+  const flyAsset = useFBX('/models/flying.fbx');
   const landAsset = useFBX('/models/landing.fbx');
   const sitAsset = useFBX('/models/sitting.fbx');
 
@@ -201,10 +203,11 @@ export default function TacticalAstronaut({ phase, position = [0, 0, 0], scale =
   const targetPoseWorld = useRef({});
   const sourceMixer = useMemo(() => new THREE.AnimationMixer(sourceRig), [sourceRig]);
   const actions = useMemo(() => ({
-    hovering: sourceMixer.clipAction(idleAsset.animations[0], sourceRig),
+    hovering: sourceMixer.clipAction(flyAsset.animations[0].clone(), sourceRig),
+    flying: sourceMixer.clipAction(flyAsset.animations[0], sourceRig),
     landing: sourceMixer.clipAction(landAsset.animations[0], sourceRig),
     seated: sourceMixer.clipAction(sitAsset.animations[0], sourceRig),
-  }), [sourceMixer, sourceRig, idleAsset, landAsset, sitAsset]);
+  }), [sourceMixer, sourceRig, flyAsset, landAsset, sitAsset]);
 
   const movementScratch = useMemo(() => ({
     leftToe: new THREE.Vector3(),
@@ -258,9 +261,17 @@ export default function TacticalAstronaut({ phase, position = [0, 0, 0], scale =
     } else yaw = sampleJourney(progress, group.current.position);
     const seatedWeight = arrival.seatedWeight;
     const flightLean = phase === 'flying'
-      ? Math.sin(clamp(progress / 0.52) * Math.PI) * 0.1 : 0;
-    // Keep hovering upright, with only a slight forward lean during travel.
-    group.current.rotation.set(flightLean, yaw, 0);
+      ? Math.sin(clamp(progress / 0.52) * Math.PI) * 0.38 : 0;
+    // Give the introductory guide a gentle, continuous float even when
+    // visitors stop scrolling. Fade it out before the authored descent.
+    const hoverWeight = 1 - smooth(progress / 0.06);
+    group.current.position.x += Math.sin(t * 0.9) * 0.065 * hoverWeight;
+    group.current.position.y += Math.sin(t * 1.55) * 0.18 * hoverWeight;
+    group.current.rotation.set(
+      flightLean + Math.sin(t * 1.55 + 0.7) * 0.025 * hoverWeight,
+      yaw + Math.sin(t * 0.9) * 0.045 * hoverWeight,
+      Math.sin(t * 0.9 + 0.5) * 0.035 * hoverWeight,
+    );
     group.current.updateMatrixWorld(true);
 
     group.current.getWorldQuaternion(poseScratch.wrapperWorld);
@@ -268,7 +279,8 @@ export default function TacticalAstronaut({ phase, position = [0, 0, 0], scale =
     // Let AnimationMixer own the source pose. Resetting bones each frame
     // breaks frozen scroll samples: unchanged mixer values are not rewritten,
     // so a settled seated pose would revert to the bind pose.
-    sampleCharacterPose(actions, progress);
+    const hoverTime = (t * 0.48 / actions.hovering.getClip().duration) % 1;
+    sampleCharacterPose(actions, progress, hoverTime);
     sourceMixer.update(delta);
 
 
