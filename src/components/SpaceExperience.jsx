@@ -2,12 +2,11 @@ import { useCallback, useEffect, useState } from 'react';
 import { Cache } from 'three';
 import { createAssetDownloads } from './assetDownloads';
 import { STAGE_ASSETS, STAGE_ORDER } from './sceneStages';
+import { JOURNEY_SCROLL_HEIGHT } from './sceneConstants';
 
 const imports = {
   opening: () => import('./SpaceCanvas'),
-  route: () => import('./ControlCubeField'),
   moon: () => import('./MoonScene'),
-  debris: () => import('./DistantDebris'),
 };
 const jobs = new Map();
 function prepareStage(stage, onProgress) {
@@ -58,14 +57,14 @@ export default function SpaceExperience() {
     <section className="space-region" id="space-experience" aria-label="Interactive project journey">
       <div className="space-stage">
         <div className="space-status" role="status">
-          {status.error || 'PREPARING THE SHUTTLE'}
+          {status.error || 'PREPARING YOUR EXPLORATION'}
           <progress value={status.progress * 0.75} max="1" aria-label="Preparing the opening scene" />
           <span>{Math.floor(status.progress * 75)}%</span>
           <a href="#contact">Get in touch while space prepares ↗</a>
           {status.error && <button onClick={retry}>Retry experience</button>}
         </div>
       </div>
-      <div style={{ height: '520vh' }} />
+      <div style={{ height: JOURNEY_SCROLL_HEIGHT }} />
     </section>
   );
 }

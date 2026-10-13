@@ -6,39 +6,14 @@ export const SCENE_ASSETS = [
     "version": "da8b23ca60723b58"
   },
   {
-    "url": "/models/aliencubealpha-unit.glb",
-    "bytes": 8409152,
-    "version": "53b3589b28054e76"
-  },
-  {
     "url": "/models/bot_mecha_warrior.glb",
     "bytes": 13690580,
     "version": "55ae483d67bd28c7"
   },
   {
-    "url": "/models/flying.fbx",
-    "bytes": 475712,
-    "version": "ea420f31be9faec8"
-  },
-  {
-    "url": "/models/halo_4multiplayercrimsonwreckage.glb",
-    "bytes": 39932996,
-    "version": "550b2b3c155a6c65"
-  },
-  {
     "url": "/models/idle.fbx",
     "bytes": 788464,
     "version": "b336d3e3410453a5"
-  },
-  {
-    "url": "/models/international_space_station_-_3d_scan_-_module.glb",
-    "bytes": 4938204,
-    "version": "132951a97f6500cb"
-  },
-  {
-    "url": "/models/jump.fbx",
-    "bytes": 614672,
-    "version": "43c4ac286a697ef3"
   },
   {
     "url": "/models/landing.fbx",
@@ -71,23 +46,8 @@ export const SCENE_ASSETS = [
     "version": "74725372a2404df1"
   },
   {
-    "url": "/models/sci-fi_cube_01.glb",
-    "bytes": 4412728,
-    "version": "58beb6ef1ca97cb2"
-  },
-  {
     "url": "/models/sitting.fbx",
     "bytes": 846112,
     "version": "6cea0d013586e6e6"
-  },
-  {
-    "url": "/models/stroke_shaking_head.fbx",
-    "bytes": 1870784,
-    "version": "606701668a0727a1"
-  },
-  {
-    "url": "/models/waking.fbx",
-    "bytes": 1898144,
-    "version": "165d1ac5b4fb90f0"
   }
 ];

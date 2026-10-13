@@ -1,92 +1,60 @@
-import { HOP_WAYPOINTS, LAUNCH_POINT, FLIGHT_APEX, MOON_SEAT_POSITION, PLANET_ROW_Z } from './sceneConstants.js';
+import { MOON_SEAT_POSITION, PLANET_ROW_Z } from './sceneConstants.js';
 
-export const PHASE_BANDS = [
-  { end: 0.08, phase: 'sleeping' },
-  { end: 0.18, phase: 'waking' },
-  { end: 0.30, phase: 'idle' },
-  { end: 0.46, phase: 'hopping' },
-  { end: 0.54, phase: 'launching' },
-  { end: 0.78, phase: 'flying' },
-  { end: 0.88, phase: 'landing' },
-  { end: 1, phase: 'seated' },
-];
 export const clamp = value => Math.min(1, Math.max(0, value));
 export const smooth = value => { const t = clamp(value); return t * t * (3 - 2 * t); };
+export const PHASE_BANDS = [
+  { end: 0.05, phase: 'hovering' },
+  { end: 0.52, phase: 'flying' },
+  { end: 0.84, phase: 'landing' },
+  { end: 1, phase: 'seated' },
+];
+export const phaseForProgress = p => PHASE_BANDS.find(band => p < band.end)?.phase || 'seated';
 
-// One reversible timeline for descent, touchdown and sitting. Finish the
-// descent before folding into the seated pose; no wall-clock restart on entry.
+// Keep over a third of the project section for browsing after arrival.
+export function pacedJourneyProgress(scroll) {
+  const p = clamp(scroll);
+  return p <= 0.65 ? p / 0.65 * 0.84 : 0.84 + (p - 0.65) / 0.35 * 0.16;
+}
+
 export function sampleArrival(progress) {
-  const touchdown = smooth((progress - 0.78) / 0.055);
-  const seatedWeight = smooth((progress - 0.835) / 0.045);
-  const flightWeight = 1 - smooth((progress - 0.78) / 0.02);
-  return {
-    touchdown,
-    seatedWeight,
-    flightWeight,
+  const touchdown = smooth((progress - 0.52) / 0.16);
+  const seatedWeight = smooth((progress - 0.68) / 0.16);
+  const flightWeight = 1 - smooth((progress - 0.52) / 0.055);
+  return { touchdown, seatedWeight, flightWeight,
     landingWeight: (1 - flightWeight) * (1 - seatedWeight),
-    landingTime: clamp((progress - 0.78) / 0.055),
+    landingTime: clamp((progress - 0.52) / 0.16),
     seatedTime: seatedWeight,
-    cameraBlend: smooth((progress - 0.70) / 0.18),
+    cameraBlend: smooth(progress / 0.84),
   };
 }
-// Give the hops 50% more scroll distance while retaining the authored camera,
-// pose and world-path timeline. All consumers receive this same playhead.
-export function pacedJourneyProgress(scroll) {
-  const distance = clamp(scroll) * 1.08;
-  if (distance <= 0.30) return distance;
-  if (distance <= 0.54) return 0.30 + (distance - 0.30) / 1.5;
-  return Math.min(1, distance - 0.08);
-}
-export function phaseForProgress(progress) {
-  return PHASE_BANDS.find(band => progress < band.end)?.phase || 'seated';
-}
 
-// The hop sequence is staged for a front/three-quarter camera: the mech keeps
-// its chest toward the viewer while crossing the cubes, then turns in flight
-// toward the planet row.  The authored bot faces +Z at yaw 0.
-const HOP_FACING_YAW = 0;
-
-// Every branch meets the next at the same world position. No wall-clock hop
-// index: wheel speed and reverse scrolling cannot skip or teleport the route.
-export function sampleJourney(progress, position) {
+// Arrival starts from the same projected position used beside Selected Work.
+// This is evaluated in both directions; no jumps, bounces or hop indices.
+export function sampleJourney(progress, position, departure = [3, MOON_SEAT_POSITION[1] + 4, -2]) {
   const p = clamp(progress);
-  const count = HOP_WAYPOINTS.length - 1;
+  const travel = smooth(p / 0.52);
+  if (p < 0.52) {
+    position.set(departure[0] * (1 - travel),
+      departure[1] + (MOON_SEAT_POSITION[1] + 1.2 - departure[1]) * travel,
+      departure[2] + (MOON_SEAT_POSITION[2] - departure[2]) * travel);
+  } else {
+    position.fromArray(MOON_SEAT_POSITION);
+    position.y += 1.2 * (1 - sampleArrival(p).touchdown);
+  }
   const facing = Math.atan2(-MOON_SEAT_POSITION[0], PLANET_ROW_Z - MOON_SEAT_POSITION[2]);
-  if (p < 0.30) {
-    position.fromArray(HOP_WAYPOINTS[0]);
-    return HOP_FACING_YAW;
+  return -0.12 + (facing + 0.12) * smooth(p / 0.45);
+}
+
+// Screen positions live in the open areas beside the name and between cards.
+export function sampleGuide(scroll, stops, compact = false) {
+  const anchors = compact
+    ? [[0.82, 0.22], [0.92, 0.18], [0.92, 0.18], [0.92, 0.25], [0.92, 0.25], [0.82, 0.40]]
+    : [[0.88, 0.49], [0.96, 0.36], [0.96, 0.36], [0.58, 0.60], [0.58, 0.60], [0.82, 0.42]];
+  for (let i = 0; i < stops.length - 1; i++) {
+    if (scroll <= stops[i + 1]) {
+      const t = smooth((scroll - stops[i]) / Math.max(1, stops[i + 1] - stops[i]));
+      return anchors[i].map((value, axis) => value + (anchors[i + 1][axis] - value) * t);
+    }
   }
-  if (p < 0.46) {
-    const route = clamp((p - 0.30) / 0.16) * count;
-    const index = Math.min(count - 1, Math.floor(route));
-    const local = route - index;
-    const from = HOP_WAYPOINTS[index], to = HOP_WAYPOINTS[index + 1];
-    // A brief contact beat at both ends makes each surface landing readable.
-    const t = smooth((local - 0.10) / 0.80);
-    position.set(from[0] + (to[0] - from[0]) * t,
-      from[1] + (to[1] - from[1]) * t + Math.sin(t * Math.PI) * 0.9,
-      from[2] + (to[2] - from[2]) * t);
-    // Keep the mech facing the front while hopping. The camera does the
-    // three-quarter reveal; the body should not look like it is running away.
-    return HOP_FACING_YAW;
-  }
-  if (p < 0.54) {
-    const t = smooth((p - 0.46) / 0.08);
-    position.set(LAUNCH_POINT[0], LAUNCH_POINT[1] + (FLIGHT_APEX[1] - LAUNCH_POINT[1]) * t, LAUNCH_POINT[2]);
-    return HOP_FACING_YAW;
-  }
-  if (p < 0.78) {
-    const t = smooth((p - 0.54) / 0.24);
-    position.set(FLIGHT_APEX[0] + (MOON_SEAT_POSITION[0] - FLIGHT_APEX[0]) * t,
-      FLIGHT_APEX[1] + (MOON_SEAT_POSITION[1] + 1.2 - FLIGHT_APEX[1]) * t,
-      FLIGHT_APEX[2] + (MOON_SEAT_POSITION[2] - FLIGHT_APEX[2]) * t);
-    // No dedicated turn FBX is present in public/models. Blend the existing
-    // flight clip with a deterministic shortest-path yaw so the turn reads as
-    // an intentional in-flight orientation change rather than a snap.
-    const turn = Math.atan2(Math.sin(facing - HOP_FACING_YAW), Math.cos(facing - HOP_FACING_YAW));
-    return HOP_FACING_YAW + turn * t;
-  }
-  position.fromArray(MOON_SEAT_POSITION);
-  if (p < 0.88) position.y += 1.2 * (1 - sampleArrival(p).touchdown);
-  return facing;
+  return anchors[anchors.length - 1];
 }

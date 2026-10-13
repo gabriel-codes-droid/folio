@@ -1,3 +1,17 @@
 .stage-buffer{position:absolute;z-index:21;bottom:28px;left:50%;transform:translateX(-50%);width:max-content;max-width:calc(100% - 32px);display:flex;flex-wrap:wrap;align-items:center;gap:16px;padding:14px 20px;border:1px solid #ffffff30;background:#09121be8;border-radius:8px;color:#eee;font:12px 'Geist Mono',monospace}
 .stage-buffer a,.space-status a{color:#b7d7e9}.stage-buffer button{background:transparent;border:1px solid #ffffff50;color:inherit;padding:6px 10px}
 @media(max-width:600px){.stage-buffer{font-size:10px}}
+.guide-canvas-shell{position:fixed;inset:0;z-index:3;pointer-events:none;transition:opacity .9s ease}
+.guide-canvas-shell.is-gallery{pointer-events:auto}
+.space-stage{background:#010103 url('/images/stars-clean.png') center/cover no-repeat}
+.journey-ui{position:fixed;right:28px;bottom:26px;z-index:8;display:flex;flex-direction:column;align-items:flex-end;gap:12px;max-width:calc(100% - 40px)}
+.journey-ui>p,.journey-ui>button{margin:0;padding:11px 15px;border:1px solid #c2e5f12b;border-radius:4px;background:#050b12c9;color:#d0dce3;font:11px var(--font-mono);backdrop-filter:blur(8px)}
+.journey-ui>button{cursor:pointer}.journey-ui>button:disabled{opacity:.5;cursor:default}
+.journey-ui>button:focus-visible{outline:2px solid #b7d7e9;outline-offset:4px}
+.journey-ui .stage-buffer{position:static;transform:none;width:auto;max-width:100%;font-size:10px}
+.mobile-planet-labels{display:grid;grid-template-columns:1fr 1fr;gap:8px;width:min(350px,100%)}
+.mobile-planet-labels button{border:1px solid #b5d5e33d;border-radius:3px;background:#07111bd9;color:#e8f1f5;padding:12px 9px;font:10px var(--font-mono);text-align:left;min-height:48px}
+.mobile-planet-labels button:focus-visible{outline:2px solid #b7d7e9;outline-offset:3px}
+@media(min-width:1000px){.hero .discipline-title{font-size:clamp(68px,8.6vw,138px);max-width:calc(100% - 180px)}}
+@media(max-width:600px){.hero{padding-top:110px}.hero .discipline-title{font-size:clamp(38px,10.2vw,68px)}.journey-ui{right:16px;bottom:20px}.journey-ui>p,.journey-ui>button{font-size:10px}}
+@media(prefers-reduced-motion:reduce){.guide-canvas-shell{transition:none}}

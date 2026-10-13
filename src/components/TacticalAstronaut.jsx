@@ -2,11 +2,11 @@ import { useEffect, useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { useFBX, useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
-import { sampleJourney, sampleArrival, smooth, clamp } from './journey';
+import { sampleJourney, sampleArrival, clamp } from './journey';
+import { sampleCharacterPose } from './characterPose';
 import { clone as cloneSkinnedScene } from 'three/examples/jsm/utils/SkeletonUtils.js';
 import {
   MOON_SEAT_POSITION,
-  MECH_SLEEP_POSITION,
 } from './sceneConstants';
 
 const ASTRONAUT_MODEL = '/models/bot_mecha_warrior.glb';
@@ -14,10 +14,6 @@ const CHARACTER_SCALE = 0.68;
 
 useGLTF.preload(ASTRONAUT_MODEL);
 useFBX.preload('/models/idle.fbx');
-useFBX.preload('/models/stroke_shaking_head.fbx');
-useFBX.preload('/models/waking.fbx');
-useFBX.preload('/models/jump.fbx');
-useFBX.preload('/models/flying.fbx');
 useFBX.preload('/models/landing.fbx');
 useFBX.preload('/models/sitting.fbx');
 
@@ -112,9 +108,8 @@ function createBootFlame() {
   return group;
 }
 
-export default function TacticalAstronaut({ phase, position = [0, 0, 0], scale = 1, hopPoints = [[0, 0, 0]], journeyProgress = 0, journeyProgressRef, mechPosRef, mechYawRef }) {
+export default function TacticalAstronaut({ phase, position = [0, 0, 0], scale = 1, journeyProgress = 0, journeyProgressRef, worldPositionRef, controlledYawRef }) {
   const group = useRef(null);
-  const activeAction = useRef(null);
   const { scene } = useGLTF(ASTRONAUT_MODEL);
   const astronaut = useMemo(() => {
     const clone = cloneSkinnedScene(scene);
@@ -157,17 +152,13 @@ export default function TacticalAstronaut({ phase, position = [0, 0, 0], scale =
     return clone;
   }, [scene]);
 
-  // These are the exact project copies of Idle.fbx, Mutant Jumping.fbx,
-  // Flying.fbx, Landing.fbx, and Sitting Idle.fbx from the 3d Models folder.
+  // An upright idle source gives hovering a steady torso and relaxed limbs.
+  // Travel is authored in world space, without a jump or somersault clip.
   const idleAsset = useFBX('/models/idle.fbx');
-  const sleepingAsset = useFBX('/models/stroke_shaking_head.fbx');
-  const wakingAsset = useFBX('/models/waking.fbx');
-  const mutantJumpAsset = useFBX('/models/jump.fbx');
-  const flyAsset = useFBX('/models/flying.fbx');
   const landAsset = useFBX('/models/landing.fbx');
   const sitAsset = useFBX('/models/sitting.fbx');
 
-  const sourceRig = useMemo(() => cloneSkinnedScene(mutantJumpAsset), [mutantJumpAsset]);
+  const sourceRig = useMemo(() => cloneSkinnedScene(idleAsset), [idleAsset]);
   const sourceBones = useMemo(() => {
     const result = {};
     sourceRig.traverse((object) => { if (object.isBone) result[object.name] = object; });
@@ -210,41 +201,10 @@ export default function TacticalAstronaut({ phase, position = [0, 0, 0], scale =
   const targetPoseWorld = useRef({});
   const sourceMixer = useMemo(() => new THREE.AnimationMixer(sourceRig), [sourceRig]);
   const actions = useMemo(() => ({
-    sleeping: sourceMixer.clipAction(sleepingAsset.animations[0], sourceRig),
-    waking: sourceMixer.clipAction(wakingAsset.animations[0], sourceRig),
-    idle: sourceMixer.clipAction(idleAsset.animations[0], sourceRig),
-    hopping: sourceMixer.clipAction(mutantJumpAsset.animations[0], sourceRig),
-    launching: sourceMixer.clipAction(mutantJumpAsset.animations[0], sourceRig),
-    flying: sourceMixer.clipAction(flyAsset.animations[0], sourceRig),
+    hovering: sourceMixer.clipAction(idleAsset.animations[0], sourceRig),
     landing: sourceMixer.clipAction(landAsset.animations[0], sourceRig),
     seated: sourceMixer.clipAction(sitAsset.animations[0], sourceRig),
-  }), [sourceMixer, sourceRig, sleepingAsset, wakingAsset, idleAsset, mutantJumpAsset, flyAsset, landAsset, sitAsset]);
-
-  useEffect(() => {
-    const action = actions?.[phase];
-    if (!action) return;
-    // Arrival actions are sampled and weighted together in useFrame. Resetting
-    // them here would restart the sitting pose when crossing this boundary.
-    if (phase === 'landing' || phase === 'seated') return;
-    // Previously called .stop() on every action here, which instantly halts
-    // and resets ALL of them — including whichever one the PREVIOUS effect's
-    // cleanup had just started fading out via fadeOut(0.12) a moment earlier.
-    // That cancelled the fade mid-flight and caused a hard pose-snap at
-    // every single phase change (7 of them across the whole journey) — the
-    // reported "blink." The cleanup below already handles fading the old
-    // action out smoothly; AnimationMixer supports multiple concurrently-
-    // weighted actions by design, so nothing needs to be force-stopped here.
-    const oneShot = phase === 'waking' || phase === 'landing';
-    action.reset()
-      .setEffectiveWeight(1)
-      .setLoop(oneShot ? THREE.LoopOnce : THREE.LoopRepeat, oneShot ? 1 : Infinity)
-      .fadeIn(0.28)
-      .play();
-    action.clampWhenFinished = oneShot;
-    action.setEffectiveTimeScale(phase === 'flying' ? 0.48 : phase === 'hopping' ? 0.72 : 1);
-    activeAction.current = action;
-    return () => action.fadeOut(0.12);
-  }, [actions, phase]);
+  }), [sourceMixer, sourceRig, idleAsset, landAsset, sitAsset]);
 
   const movementScratch = useMemo(() => ({
     leftToe: new THREE.Vector3(),
@@ -262,11 +222,14 @@ export default function TacticalAstronaut({ phase, position = [0, 0, 0], scale =
   useFrame((state, delta) => {
     if (!group.current) return;
     const t = state.clock.getElapsedTime();
+    const progress = journeyProgressRef?.current ?? journeyProgress;
+    const arrival = sampleArrival(progress);
 
     // Boot thrusters are only active for launch/flight. The independent
     // pulses stop the exhaust looking like a static cone while the attached
     // point lights give the boots and nearby leg armour a cyan lift.
-    const thrustActive = phase === 'launching' || phase === 'flying';
+    const thrust = (1 - arrival.touchdown) * (phase === 'hovering' ? 0.55 : 0.9);
+    const thrustActive = thrust > 0.001;
     const leftFoot = targetBones['foot_l_059'];
     const rightFoot = targetBones['foot_r_067'];
     [leftFoot, rightFoot].forEach((foot, index) => {
@@ -277,27 +240,26 @@ export default function TacticalAstronaut({ phase, position = [0, 0, 0], scale =
         const pulse = 0.9 + Math.sin(t * 27 + index * 1.9) * 0.065
           + Math.sin(t * 53 + index * 0.7) * 0.035;
         const surge = 1 + Math.sin(t * 17 + index) * 0.09;
-        flame.scale.set(pulse, surge, pulse);
+        flame.scale.set(pulse * 0.8, surge * thrust, pulse * 0.8);
         flame.userData.plume.scale.set(1 + (surge - 1) * 1.8, 1 + (surge - 1) * 2.4, 1 + (surge - 1) * 1.8);
         flame.userData.shell.material.opacity = 0.48 + pulse * 0.08;
         flame.userData.plume.material.opacity = 0.2 + pulse * 0.09;
         flame.userData.heatGlow.material.opacity = 0.28 + pulse * 0.16;
-        flame.userData.light.intensity = 1.25 + pulse * 0.85;
+        flame.userData.light.intensity = (1.25 + pulse * 0.85) * thrust;
       } else {
         flame.userData.light.intensity = 0;
       }
     });
 
-    const progress = journeyProgressRef?.current ?? journeyProgress;
-    const yaw = sampleJourney(progress, group.current.position);
-    const wake = smooth((progress - 0.08) / 0.10);
-    const lying = phase === 'sleeping' ? 1 : phase === 'waking' ? 1 - wake : 0;
-    const arrival = sampleArrival(progress);
+    let yaw;
+    if (worldPositionRef) {
+      group.current.position.copy(worldPositionRef.current);
+      yaw = controlledYawRef.current;
+    } else yaw = sampleJourney(progress, group.current.position);
     const seatedWeight = arrival.seatedWeight;
     const flightLean = phase === 'flying'
-      ? Math.sin(clamp((progress - 0.54) / 0.24) * Math.PI) * 0.38 : 0;
-    // The stroke/shaking-head FBX is already lying down; another 90-degree
-    // wrapper rotation would put its legs in the air.
+      ? Math.sin(clamp(progress / 0.52) * Math.PI) * 0.1 : 0;
+    // Keep hovering upright, with only a slight forward lean during travel.
     group.current.rotation.set(flightLean, yaw, 0);
     group.current.updateMatrixWorld(true);
 
@@ -306,51 +268,7 @@ export default function TacticalAstronaut({ phase, position = [0, 0, 0], scale =
     // Let AnimationMixer own the source pose. Resetting bones each frame
     // breaks frozen scroll samples: unchanged mixer values are not rewritten,
     // so a settled seated pose would revert to the bind pose.
-    // Sample one-shot and hopping clips from the same scroll playhead as
-    // their world motion. No elapsed-time loop can run ahead of the route.
-    const scroll = journeyProgressRef?.current ?? journeyProgress;
-    const action = activeAction.current;
-    if (action && (phase === 'waking' || phase === 'hopping' || phase === 'landing')) {
-      let local = phase === 'waking' ? clamp((scroll - 0.08) / 0.10)
-        : phase === 'landing' ? clamp((scroll - 0.78) / 0.10)
-        : (clamp((scroll - 0.30) / 0.16) * (hopPoints.length - 1)) % 1;
-      action.time = local * Math.max(0, action.getClip().duration - 0.001);
-      action.setEffectiveTimeScale(0);
-    }
-    if (phase === 'sleeping' || phase === 'waking') {
-      const wakeWeight = phase === 'sleeping' ? 0 : wake;
-      actions.sleeping.enabled = true;
-      actions.sleeping.stopFading().setEffectiveWeight(1 - wakeWeight).play();
-      actions.waking.enabled = true;
-      actions.waking.stopFading().setEffectiveWeight(wakeWeight).play();
-    } else {
-      actions.sleeping.stopFading().setEffectiveWeight(0);
-    }
-    if (progress >= 0.54) {
-      // Sampling the same clip times and blend weights in both directions
-      // makes reverse scrolling retrace the landing instead of replaying it.
-      const flightTime = clamp((progress - 0.54) / 0.24);
-      const weights = {
-        flying: progress < 0.78 ? 1 : arrival.flightWeight,
-        landing: arrival.landingWeight,
-        seated: seatedWeight,
-      };
-      const times = { flying: flightTime, landing: arrival.landingTime, seated: arrival.seatedTime };
-      for (const [name, clipAction] of Object.entries(actions)) {
-        clipAction.stopFading().setEffectiveWeight(weights[name] || 0);
-        if (name in weights) {
-          clipAction.enabled = true;
-          clipAction.paused = false;
-          clipAction.setLoop(THREE.LoopOnce, 1);
-          clipAction.clampWhenFinished = true;
-          clipAction.setEffectiveTimeScale(0);
-          clipAction.time = times[name] * Math.max(0, clipAction.getClip().duration - 0.001);
-          clipAction.play();
-        }
-      }
-    } else if (phase !== 'seated') {
-      actions.seated.stopFading().setEffectiveWeight(0);
-    }
+    sampleCharacterPose(actions, progress);
     sourceMixer.update(delta);
 
 
@@ -406,7 +324,7 @@ export default function TacticalAstronaut({ phase, position = [0, 0, 0], scale =
     });
 
     group.current.updateMatrixWorld(true);
-    if (phase === 'idle' || phase === 'hopping' || phase === 'landing') {
+    if (phase === 'landing') {
       const left = targetBones['toes_01_l_060'];
       const right = targetBones['toes_01_r_068'];
       if (left && right) {
@@ -418,12 +336,9 @@ export default function TacticalAstronaut({ phase, position = [0, 0, 0], scale =
         group.current.updateMatrixWorld(true);
       }
     }
-    // Keep the sleeping body above the floor and settle the seated pelvis,
-    // rather than anchoring a sitting pose by its toes and lifting the hips.
-    if (lying > 0 || seatedWeight > 0) {
-      const contactNames = seatedWeight > 0
-        ? ['root_x_03']
-        : ['root_x_03', 'spine_05_x_08', 'head_x_011', 'foot_l_059', 'foot_r_067'];
+    // Settle the pelvis onto the moon while the legs fold in parallel.
+    if (seatedWeight > 0) {
+      const contactNames = ['root_x_03'];
       let lowest = Infinity;
       for (const name of contactNames) {
         const bone = targetBones[name];
@@ -433,16 +348,12 @@ export default function TacticalAstronaut({ phase, position = [0, 0, 0], scale =
         }
       }
       if (Number.isFinite(lowest)) {
-        const surface = seatedWeight > 0 ? MOON_SEAT_POSITION[1] : MECH_SLEEP_POSITION[1];
+        const surface = MOON_SEAT_POSITION[1];
         const clearance = 0.20;
-        group.current.position.y += (surface + clearance - lowest) * (seatedWeight > 0 ? seatedWeight : lying);
+        group.current.position.y += (surface + clearance - lowest) * seatedWeight;
         group.current.updateMatrixWorld(true);
       }
     }
-
-    // Publish on EVERY phase, after the pose has been placed.
-    if (mechPosRef) group.current.getWorldPosition(mechPosRef.current);
-    if (mechYawRef) mechYawRef.current = group.current.rotation.y;
 
   }, -2);
 
