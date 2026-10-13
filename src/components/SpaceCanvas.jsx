@@ -224,7 +224,12 @@ const SpaceCanvas = ({ initialProgress = 0, onStagePrepared, stages, readyStages
         invalidateOnRefresh: true,
       },
     });
-    const refresh = () => ScrollTrigger.refresh();
+    const refresh = () => {
+      ScrollTrigger.refresh();
+      // A reload or fast jump can initialize the tween at its end without
+      // firing onUpdate. Seed the same scroll target before playback resumes.
+      desiredProgressRef.current = pacedJourneyProgress(animation.progress());
+    };
     window.addEventListener('portfolio:revealed', refresh);
     const raf = requestAnimationFrame(refresh);
     return () => {
