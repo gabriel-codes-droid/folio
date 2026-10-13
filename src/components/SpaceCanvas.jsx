@@ -3,7 +3,7 @@ import { OrbitControls, Environment } from '@react-three/drei';
 import { EffectComposer, Bloom } from '@react-three/postprocessing';
 import { Suspense, useRef, useState, useEffect, useCallback, Component } from 'react';
 import * as THREE from 'three';
-import { phaseForProgress, spaceJourneyProgress, sampleArrival, sampleJourney, sampleGuide, smooth } from './journey';
+import { phaseForProgress, spaceJourneyProgress, sceneExitInset, sampleArrival, sampleJourney, sampleGuide, smooth } from './journey';
 import { advanceProgress, availableProgress } from './sceneStages';
 import TacticalAstronaut from './TacticalAstronaut';
 import SceneReady, { AssetProgress, reportBoot } from './SceneReady';
@@ -83,6 +83,7 @@ function useMemoVectors() {
 export default function SpaceCanvas({ initialProgress = 0, onStagePrepared, stages, readyStages, stageStatus, onRetry }) {
   const MoonScene = stages.moon;
   const regionRef = useRef(null);
+  const canvasShellRef = useRef(null);
   const moonRoot = useRef(null);
   const desired = useRef(0);
   const actual = useRef(0);
@@ -125,8 +126,13 @@ export default function SpaceCanvas({ initialProgress = 0, onStagePrepared, stag
       const compact = window.innerWidth < 700;
       viewRef.current = { guide: sampleGuide(scroll, stops, compact), compact };
       desired.current = spaceJourneyProgress(section.top, section.height, height);
-      setInSpace(section.top <= height * 0.85 && section.bottom >= height * 0.4);
-      setActive(section.bottom > height * 0.2);
+      // Clip the fixed canvas at the section boundary as the following
+      // editorial content enters. Update its style without frame rerenders.
+      if (canvasShellRef.current) {
+        canvasShellRef.current.style.clipPath = `inset(0px 0px ${sceneExitInset(section.bottom, height)}px 0px)`;
+      }
+      setInSpace(section.top <= height * 0.85 && section.bottom > 0);
+      setActive(section.bottom > 0);
     };
     const schedule = () => { if (!frame) frame = requestAnimationFrame(measure); };
     window.addEventListener('scroll', schedule, { passive: true });
@@ -158,7 +164,7 @@ export default function SpaceCanvas({ initialProgress = 0, onStagePrepared, stag
       </div>
       <div style={{ height: JOURNEY_SCROLL_HEIGHT }} />
     </section>
-    <div className={`guide-canvas-shell${gallery ? ' is-gallery' : ''}`} style={{ opacity: ready && active ? 1 : 0 }} aria-hidden={!active}>
+    <div ref={canvasShellRef} className={`guide-canvas-shell${gallery ? ' is-gallery' : ''}`} style={{ opacity: ready && active ? 1 : 0 }} aria-hidden={!active}>
       <SceneErrorBoundary><Canvas frameloop={!ready || active || warmingStage ? 'always' : 'never'}
         camera={{ position: GUIDE_CAMERA_POSITION, fov: 52 }} dpr={[1, 1.5]}
         gl={{ antialias: true, alpha: true, powerPreference: 'high-performance' }}>

@@ -23,6 +23,10 @@ export function spaceJourneyProgress(sectionTop, sectionHeight, viewportHeight) 
   return pacedJourneyProgress((lead - sectionTop) / Math.max(1, sectionHeight - viewportHeight + lead));
 }
 
+export function sceneExitInset(sectionBottom, viewportHeight) {
+  return Math.min(viewportHeight, Math.max(0, viewportHeight - sectionBottom));
+}
+
 export function sampleArrival(progress) {
   const touchdown = smooth((progress - 0.52) / 0.16);
   const seatedWeight = smooth((progress - 0.68) / 0.16);

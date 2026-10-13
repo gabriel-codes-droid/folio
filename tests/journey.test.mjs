@@ -1,8 +1,16 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { Vector3 } from 'three';
-import { sampleJourney, sampleArrival, sampleGuide, phaseForProgress, pacedJourneyProgress, spaceJourneyProgress } from '../src/components/journey.js';
+import { sampleJourney, sampleArrival, sampleGuide, phaseForProgress, pacedJourneyProgress, spaceJourneyProgress, sceneExitInset } from '../src/components/journey.js';
 import { MOON_SEAT_POSITION, PLANET_ROW_Z } from '../src/components/sceneConstants.js';
+
+test('the fixed scene clips exactly above the entering tech-stack section', () => {
+  assert.equal(sceneExitInset(1800, 1000), 0);
+  assert.equal(sceneExitInset(1000, 1000), 0);
+  assert.equal(sceneExitInset(600, 1000), 400);
+  assert.equal(sceneExitInset(0, 1000), 1000);
+  assert.equal(sceneExitInset(-200, 1000), 1000);
+});
 
 test('flight begins when the star field enters and completes at the same exit', () => {
   assert.equal(spaceJourneyProgress(900, 4000, 1000), 0);
