@@ -11,11 +11,11 @@ export default function SonarGrid({
   background = false,
   // Neutral silver-white matches the supplied sonar-grid reference. The
   // alpha-driven resting/wave states create the grey-to-white contrast.
-  color = '#e4e4e4',
+  color = '#f5f5f5',
   spacing = 28,
   dotRadius = 1.15,
-  baseOpacity = 0.24,
-  maxWaveOpacity = 0.38,
+  baseOpacity = 0.27,
+  maxWaveOpacity = 0.42,
   pingEvery = 6.5,
   speed = 260,
   ringWidth = 88,
@@ -31,9 +31,9 @@ export default function SonarGrid({
     const context = canvas?.getContext('2d');
     if (!host || !canvas || !context) return undefined;
 
-    const restingOpacity = Math.max(0, Math.min(1, Number.isFinite(baseOpacity) ? baseOpacity : 0.24));
+    const restingOpacity = Math.max(0, Math.min(1, Number.isFinite(baseOpacity) ? baseOpacity : 0.27));
     // A lower wave ceiling must not dim the configured resting grid.
-    const peakOpacity = Math.max(restingOpacity, Math.min(1, Number.isFinite(maxWaveOpacity) ? maxWaveOpacity : 0.38));
+    const peakOpacity = Math.max(restingOpacity, Math.min(1, Number.isFinite(maxWaveOpacity) ? maxWaveOpacity : 0.42));
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
     let width = 1;
     let height = 1;
