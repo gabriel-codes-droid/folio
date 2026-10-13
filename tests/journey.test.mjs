@@ -1,8 +1,16 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { Vector3 } from 'three';
-import { sampleJourney, sampleArrival, sampleGuide, phaseForProgress, pacedJourneyProgress } from '../src/components/journey.js';
+import { sampleJourney, sampleArrival, sampleGuide, phaseForProgress, pacedJourneyProgress, spaceJourneyProgress } from '../src/components/journey.js';
 import { MOON_SEAT_POSITION, PLANET_ROW_Z } from '../src/components/sceneConstants.js';
+
+test('flight begins when the star field enters and completes at the same exit', () => {
+  assert.equal(spaceJourneyProgress(900, 4000, 1000), 0);
+  assert.equal(spaceJourneyProgress(850, 4000, 1000), 0);
+  assert.ok(spaceJourneyProgress(800, 4000, 1000) > 0);
+  assert.ok(spaceJourneyProgress(400, 4000, 1000) > 0.06);
+  assert.equal(spaceJourneyProgress(-3000, 4000, 1000), 1);
+});
 
 test('guide glides between section anchors continuously and settles at each stop', () => {
   const stops = [0, 200, 1000, 1400, 2200, 2600];

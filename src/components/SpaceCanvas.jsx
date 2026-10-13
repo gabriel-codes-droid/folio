@@ -3,7 +3,7 @@ import { OrbitControls, Environment } from '@react-three/drei';
 import { EffectComposer, Bloom } from '@react-three/postprocessing';
 import { Suspense, useRef, useState, useEffect, useCallback, Component } from 'react';
 import * as THREE from 'three';
-import { phaseForProgress, pacedJourneyProgress, sampleArrival, sampleJourney, sampleGuide, smooth } from './journey';
+import { phaseForProgress, spaceJourneyProgress, sampleArrival, sampleJourney, sampleGuide, smooth } from './journey';
 import { advanceProgress, availableProgress } from './sceneStages';
 import TacticalAstronaut from './TacticalAstronaut';
 import SceneReady, { AssetProgress, reportBoot } from './SceneReady';
@@ -113,7 +113,6 @@ export default function SpaceCanvas({ initialProgress = 0, onStagePrepared, stag
       const scroll = window.scrollY;
       const section = regionRef.current?.getBoundingClientRect();
       if (!section) return;
-      const top = section.top + scroll;
       const services = document.getElementById('services')?.getBoundingClientRect();
       const work = document.getElementById('work')?.getBoundingClientRect();
       const hero = document.getElementById('about')?.getBoundingClientRect();
@@ -125,8 +124,8 @@ export default function SpaceCanvas({ initialProgress = 0, onStagePrepared, stag
       for (let i = 1; i < stops.length; i++) stops[i] = Math.max(stops[i], stops[i - 1] + 1);
       const compact = window.innerWidth < 700;
       viewRef.current = { guide: sampleGuide(scroll, stops, compact), compact };
-      desired.current = pacedJourneyProgress((scroll - top) / Math.max(1, section.height - height));
-      setInSpace(section.top <= height * 0.1 && section.bottom >= height * 0.4);
+      desired.current = spaceJourneyProgress(section.top, section.height, height);
+      setInSpace(section.top <= height * 0.85 && section.bottom >= height * 0.4);
       setActive(section.bottom > height * 0.2);
     };
     const schedule = () => { if (!frame) frame = requestAnimationFrame(measure); };
@@ -147,10 +146,6 @@ export default function SpaceCanvas({ initialProgress = 0, onStagePrepared, stag
     return () => { window.removeEventListener('keydown', close); previous?.focus?.(); };
   }, [selectedProject]);
 
-  const skipToProjects = () => {
-    const section = regionRef.current.getBoundingClientRect();
-    window.scrollTo({ top: window.scrollY + section.top + (section.height - window.innerHeight) * 0.67, behavior: 'smooth' });
-  };
   const gallery = phase === 'seated' && inSpace && active;
   return <>
     <section ref={regionRef} className="space-region" id="space-experience" aria-label="Explore my projects in space"
@@ -191,9 +186,7 @@ export default function SpaceCanvas({ initialProgress = 0, onStagePrepared, stag
         </Suspense></SceneErrorBoundary>}
       </Canvas></SceneErrorBoundary>
     </div>
-    {inSpace && active && ready && !gallery && <div className="journey-ui">
-      <button disabled={!readyStages.moon} onClick={skipToProjects}>
-        {readyStages.moon ? 'Skip to projects ↘' : 'Preparing projects…'}</button>
+    {inSpace && active && ready && buffering && <div className="journey-ui">
       {buffering && <div className="stage-buffer" role="status">
         <span>{stageError ? 'Please reload the experience.' : stageStatus.error || `Preparing your destination… ${Math.floor(stageStatus.progress * 100)}%`}</span>
         {stageStatus.error && <button onClick={onRetry}>Retry</button>}

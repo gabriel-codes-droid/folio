@@ -16,6 +16,13 @@ export function pacedJourneyProgress(scroll) {
   return p <= 0.65 ? p / 0.65 * 0.84 : 0.84 + (p - 0.65) / 0.35 * 0.16;
 }
 
+// Begin the departure while the star field enters the viewport, not after
+// its upper edge has already reached the top and the guide has waited there.
+export function spaceJourneyProgress(sectionTop, sectionHeight, viewportHeight) {
+  const lead = viewportHeight * 0.85;
+  return pacedJourneyProgress((lead - sectionTop) / Math.max(1, sectionHeight - viewportHeight + lead));
+}
+
 export function sampleArrival(progress) {
   const touchdown = smooth((progress - 0.52) / 0.16);
   const seatedWeight = smooth((progress - 0.68) / 0.16);
