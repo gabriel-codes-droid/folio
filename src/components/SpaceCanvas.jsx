@@ -3,7 +3,7 @@ import { OrbitControls, Environment } from '@react-three/drei';
 import { EffectComposer, Bloom } from '@react-three/postprocessing';
 import { Suspense, useRef, useState, useEffect, useCallback, Component } from 'react';
 import * as THREE from 'three';
-import { phaseForProgress, spaceJourneyProgress, sceneExitInset, sampleArrival, sampleJourney, sampleGuide, smooth } from './journey';
+import { phaseForProgress, spaceJourneyProgress, sceneExitInset, shouldHoldSceneExit, sampleArrival, sampleJourney, sampleGuide, smooth } from './journey';
 import { advanceProgress, availableProgress } from './sceneStages';
 import TacticalAstronaut from './TacticalAstronaut';
 import { presentationNearDescription } from './presentation';
@@ -48,8 +48,11 @@ function GuideController({ progressRef, phase, viewRef }) {
     const view = viewRef.current;
     const presentation = view.presentation || { weight: 0, side: 1 };
     const presentationEase = 1 - Math.exp(-Math.min(delta, 0.05) * 3.5);
-    presentationRef.current.weight += ((p === 0 ? presentation.weight : 0) - presentationRef.current.weight) * presentationEase;
-    presentationRef.current.side = presentation.side;
+    const switchingSide = presentationRef.current.side !== presentation.side;
+    const settled = Math.hypot(guide.current[0] - view.guide[0], guide.current[1] - view.guide[1]) < 0.025;
+    const targetPresentation = p === 0 && settled && !switchingSide ? presentation.weight : 0;
+    presentationRef.current.weight += (targetPresentation - presentationRef.current.weight) * presentationEase;
+    if (presentationRef.current.weight < 0.02) presentationRef.current.side = presentation.side;
     const fov = view.compact ? 60 : 52;
     if (camera.fov !== fov) { camera.fov = fov; camera.updateProjectionMatrix(); }
     scratch.finalCamera.z = view.compact ? 21 : GALLERY_CAMERA_POSITION[2];
@@ -69,7 +72,7 @@ function GuideController({ progressRef, phase, viewRef }) {
         .unproject(camera).sub(camera.position).normalize();
       worldPosition.current.copy(camera.position).addScaledVector(scratch.ray, view.compact ? 9 : 7.5);
       departure.current.copy(worldPosition.current);
-      yawRef.current = -0.12 + presentationRef.current.side * presentationRef.current.weight * 0.22;
+      yawRef.current = -0.12 + presentationRef.current.side * presentationRef.current.weight * 0.85;
     } else {
       yawRef.current = sampleJourney(p, worldPosition.current, departure.current.toArray());
     }
@@ -118,8 +121,16 @@ export default function SpaceCanvas({ initialProgress = 0, onStagePrepared, stag
       frame = 0;
       const height = window.innerHeight;
       const scroll = window.scrollY;
-      const section = regionRef.current?.getBoundingClientRect();
+      let section = regionRef.current?.getBoundingClientRect();
       if (!section) return;
+      // A fast scroll cannot reveal the next section while the slower
+      // cinematic playhead is still landing. Upward scrolling stays free.
+      if (shouldHoldSceneExit(actual.current, section.bottom, height) && section.bottom < height - 1) {
+        desired.current = 1;
+        window.scrollTo({ top: scroll + section.bottom - height, behavior: 'instant' });
+        schedule();
+        return;
+      }
       const services = document.getElementById('services')?.getBoundingClientRect();
       const work = document.getElementById('work')?.getBoundingClientRect();
       const hero = document.getElementById('about')?.getBoundingClientRect();
@@ -144,12 +155,20 @@ export default function SpaceCanvas({ initialProgress = 0, onStagePrepared, stag
       setActive(section.bottom > 0);
     };
     const schedule = () => { if (!frame) frame = requestAnimationFrame(measure); };
+    const guardExit = event => {
+      const section = regionRef.current?.getBoundingClientRect();
+      if (event.deltaY > 0 && section && shouldHoldSceneExit(actual.current, section.bottom, window.innerHeight)) {
+        desired.current = 1;
+        event.preventDefault();
+      }
+    };
+    window.addEventListener('wheel', guardExit, { passive: false });
     window.addEventListener('scroll', schedule, { passive: true });
     window.addEventListener('resize', schedule);
     const observer = new ResizeObserver(schedule);
     observer.observe(document.body);
     measure();
-    return () => { cancelAnimationFrame(frame); observer.disconnect(); window.removeEventListener('scroll', schedule); window.removeEventListener('resize', schedule); };
+    return () => { cancelAnimationFrame(frame); observer.disconnect(); window.removeEventListener('wheel', guardExit); window.removeEventListener('scroll', schedule); window.removeEventListener('resize', schedule); };
   }, []);
   useEffect(() => { if (phase !== 'seated' || !inSpace) setSelectedProject(null); }, [phase, inSpace]);
   useEffect(() => {

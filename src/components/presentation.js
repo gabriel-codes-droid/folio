@@ -13,8 +13,8 @@ export const PRESENTATION_CHAINS = {
 // Mirrored in character space rather than reusing unlike local bone axes.
 export function presentationDirection(name, side) {
   const raised = side > 0 ? name.includes('_l_') : name.includes('_r_');
-  if (name.startsWith('arm_')) return raised ? [side * 0.8, 0.3, 0.2] : [side * 0.42, -0.75, 0.28];
-  if (name.startsWith('forearm_')) return raised ? [side * 0.6, 0.65, 0.2] : [side * 0.85, 0.28, 0.35];
+  if (name.startsWith('arm_')) return raised ? [side * 0.52, 0.16, 0.30] : [side * 0.28, -0.85, 0.20];
+  if (name.startsWith('forearm_')) return raised ? [side * 0.5, 0.8, 0.25] : [side * 0.8, 0.12, 0.55];
   return [side * 0.8, raised ? 0.32 : 0.12, 0.25];
 }
 
@@ -29,5 +29,5 @@ export function presentationNearDescription(guide, rectangles, width, height) {
       * smooth(1 - clamp(horizontalGap / (width * 0.55)));
     if (weight > best.weight) best = { weight, side: x < rect.left ? 1 : -1 };
   }
-  return best;
+  return { ...best, weight: smooth((best.weight - 0.08) / 0.25) };
 }

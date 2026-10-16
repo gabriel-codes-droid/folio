@@ -27,6 +27,10 @@ export function sceneExitInset(sectionBottom, viewportHeight) {
   return Math.min(viewportHeight, Math.max(0, viewportHeight - sectionBottom));
 }
 
+export function shouldHoldSceneExit(progress, sectionBottom, viewportHeight) {
+  return progress < 0.84 && sectionBottom <= viewportHeight + 1;
+}
+
 export function sampleArrival(progress) {
   const touchdown = smooth((progress - 0.52) / 0.16);
   const seatedWeight = smooth((progress - 0.68) / 0.16);

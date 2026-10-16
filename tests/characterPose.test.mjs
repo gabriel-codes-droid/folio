@@ -15,7 +15,7 @@ test('real FBX poses hold when stopped and retrace on reverse scroll', () => {
   const restHips = hips.getWorldQuaternion(new Quaternion());
   const mixer = new AnimationMixer(rig);
   const flight = load('flying').animations[0];
-  const actions = { hovering: mixer.clipAction(flight.clone()), flying: mixer.clipAction(flight), landing: mixer.clipAction(load('landing').animations[0]), seated: mixer.clipAction(load('sitting').animations[0]) };
+  const actions = { hovering: mixer.clipAction(flight.clone()), presenting: mixer.clipAction(rig.animations[0]), flying: mixer.clipAction(flight), landing: mixer.clipAction(load('landing').animations[0]), seated: mixer.clipAction(load('sitting').animations[0]) };
   const bones = [];
   rig.traverse(object => { if (object.isBone) bones.push(object); });
   const sample = progress => {

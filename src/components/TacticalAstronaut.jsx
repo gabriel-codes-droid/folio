@@ -202,6 +202,9 @@ export default function TacticalAstronaut({ phase, position = [0, 0, 0], scale =
     floorLeg: new THREE.Quaternion(),
     presentation: new THREE.Quaternion(),
     presentationYaw: new THREE.Quaternion(),
+    guideRotation: new THREE.Quaternion(),
+    guidePitch: new THREE.Quaternion(),
+    rotationEuler: new THREE.Euler(),
   }), []);
   const presentationPoses = useMemo(() => {
     astronaut.updateMatrixWorld(true);
@@ -223,6 +226,7 @@ export default function TacticalAstronaut({ phase, position = [0, 0, 0], scale =
   const sourceMixer = useMemo(() => new THREE.AnimationMixer(sourceRig), [sourceRig]);
   const actions = useMemo(() => ({
     hovering: sourceMixer.clipAction(flyAsset.animations[0].clone(), sourceRig),
+    presenting: sourceMixer.clipAction(idleAsset.animations[0], sourceRig),
     flying: sourceMixer.clipAction(flyAsset.animations[0], sourceRig),
     landing: sourceMixer.clipAction(landAsset.animations[0], sourceRig),
     seated: sourceMixer.clipAction(sitAsset.animations[0], sourceRig),
@@ -289,11 +293,15 @@ export default function TacticalAstronaut({ phase, position = [0, 0, 0], scale =
     poseScratch.presentationYaw.setFromAxisAngle(THREE.Object3D.DEFAULT_UP, yaw);
     group.current.position.x += Math.sin(t * 0.9) * 0.065 * hoverWeight;
     group.current.position.y += Math.sin(t * 1.55) * 0.18 * hoverWeight;
-    group.current.rotation.set(
-      flightLean - Math.PI / 2 * hoverWeight + Math.sin(t * 1.55 + 0.7) * 0.025 * hoverWeight,
-      yaw + Math.sin(t * 0.9) * 0.045 * hoverWeight,
-      Math.sin(t * 0.9 + 0.5) * 0.035 * hoverWeight,
-    );
+    // Turn around WORLD up before applying the flight clip's pitch correction.
+    // Euler XYZ applied yaw in the pitched frame, rolling the entire mech.
+    group.current.quaternion.setFromEuler(poseScratch.rotationEuler.set(flightLean, yaw, 0));
+    poseScratch.guidePitch.setFromEuler(poseScratch.rotationEuler.set(
+      -Math.PI / 2 * (1 - presentationWeight) + Math.sin(t * 1.55 + 0.7) * 0.018,
+      0, Math.sin(t * 0.9 + 0.5) * 0.018,
+    ));
+    poseScratch.guideRotation.copy(poseScratch.presentationYaw).multiply(poseScratch.guidePitch);
+    group.current.quaternion.slerp(poseScratch.guideRotation, hoverWeight);
     group.current.updateMatrixWorld(true);
 
     group.current.getWorldQuaternion(poseScratch.wrapperWorld);
@@ -302,7 +310,7 @@ export default function TacticalAstronaut({ phase, position = [0, 0, 0], scale =
     // breaks frozen scroll samples: unchanged mixer values are not rewritten,
     // so a settled seated pose would revert to the bind pose.
     const hoverTime = (t * 0.48 / actions.hovering.getClip().duration) % 1;
-    sampleCharacterPose(actions, progress, hoverTime);
+    sampleCharacterPose(actions, progress, hoverTime, presentationWeight);
     sourceMixer.update(delta);
 
 
@@ -327,9 +335,10 @@ export default function TacticalAstronaut({ phase, position = [0, 0, 0], scale =
         .premultiply(poseScratch.wrapperWorld);
 
       const presenting = presentationPoses[presentationSide][targetName];
-      if (presenting && presentationWeight > 0) {
+      const armWeight = smooth((presentationWeight - 0.35) / 0.65);
+      if (presenting && armWeight > 0) {
         poseScratch.presentation.copy(presenting).premultiply(poseScratch.presentationYaw);
-        poseScratch.desiredTargetWorld.slerp(poseScratch.presentation, presentationWeight);
+        poseScratch.desiredTargetWorld.slerp(poseScratch.presentation, armWeight);
       }
 
       // The supplied sit clip assumes a chair. Fold both legs in the SAME
