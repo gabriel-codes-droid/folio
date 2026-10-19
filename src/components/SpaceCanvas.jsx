@@ -194,7 +194,9 @@ export default function SpaceCanvas({ initialProgress = 0, onStagePrepared, stag
       <div style={{ height: JOURNEY_SCROLL_HEIGHT }} />
     </section>
     <div ref={canvasShellRef} className={`guide-canvas-shell${gallery ? ' is-gallery' : ''}`} style={{ opacity: ready && active ? 1 : 0 }} aria-hidden={!active}>
-      <SceneErrorBoundary><Canvas frameloop={!ready || active || warmingStage ? 'always' : 'never'}
+      {/* No frames until the guide is warmed: a visible frame would compile
+          every shader at once and freeze the already-open page. */}
+      <SceneErrorBoundary><Canvas frameloop={ready && (active || warmingStage) ? 'always' : 'never'}
         camera={{ position: GUIDE_CAMERA_POSITION, fov: 52 }} dpr={[1, 1.5]}
         gl={{ antialias: true, alpha: true, powerPreference: 'high-performance' }}>
         <AssetProgress />
@@ -216,10 +218,10 @@ export default function SpaceCanvas({ initialProgress = 0, onStagePrepared, stag
           <EffectComposer multisampling={0}><Bloom luminanceThreshold={0.9} luminanceSmoothing={0.9} intensity={0.8} radius={0.3} /></EffectComposer>
         </Suspense>
         {MoonScene && <SceneErrorBoundary onError={handleStageError}><Suspense fallback={null}>
-          <group ref={moonRoot}><group visible={inSpace}>
+          <group ref={moonRoot}><group visible={inSpace && !!readyStages.moon}>
             <MoonScene moonPosition={MOON_CENTER} moonRadius={MOON_RADIUS} planetsVisible
               labelsVisible={gallery} onSelect={setSelectedProject} />
-          </group><SceneReady quiet rootRef={moonRoot} onError={handleStageError} onReady={() => onStagePrepared('moon')} /></group>
+          </group><SceneReady rootRef={moonRoot} onError={handleStageError} onReady={() => onStagePrepared('moon')} /></group>
         </Suspense></SceneErrorBoundary>}
       </Canvas></SceneErrorBoundary>
     </div>

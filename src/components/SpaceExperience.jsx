@@ -15,7 +15,7 @@ const imports = {
 export default function SpaceExperience() {
   const [components, setComponents] = useState({});
   const [readyStages, setReadyStages] = useState({});
-  const [groups, setGroups] = useState({ destination: 0 });
+  const [groups, setGroups] = useState({ guide: 0, destination: 0 });
   const [errors, setErrors] = useState({});
   const [attempt, setAttempt] = useState(0);
   useEffect(() => onSceneProgress(setGroups), []);
@@ -51,7 +51,14 @@ export default function SpaceExperience() {
     stages={components} readyStages={readyStages} stageStatus={moonStatus} onRetry={retry} />;
   return (
     <section className="space-region" id="space-experience" aria-label="Interactive project journey">
-      <div className="space-stage" />
+      {/* Reached before the guide arrived (slow connection): say so here. */}
+      <div className="space-stage">
+        <div className="space-status" role="status">
+          PREPARING THE SPACE JOURNEY
+          <progress value={groups.guide} max="1" />
+          <span>{Math.floor(groups.guide * 100)}%</span>
+        </div>
+      </div>
       <div style={{ height: JOURNEY_SCROLL_HEIGHT }} />
     </section>
   );

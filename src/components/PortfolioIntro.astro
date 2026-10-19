@@ -120,13 +120,7 @@ const nameLines = ['N.MANDRAKE', 'GABRIEL'];
     });
     return () => cleanups.forEach(cleanup => cleanup());
   });
-  // Hold the entrance until the launch panel starts lifting, otherwise it
-  // plays unseen behind the loader.
-  const whenRevealed = (start: () => void) => {
-    if (document.documentElement.classList.contains('portfolio-booting')) window.addEventListener('portfolio:revealing', start, { once: true });
-    else start();
-  };
-  whenRevealed(() => media.add('(prefers-reduced-motion: no-preference)', () => {
+  media.add('(prefers-reduced-motion: no-preference)', () => {
     // Each name row clips its own letters. The sequence runs once and settles.
     const entrance = gsap.timeline({ scrollTrigger: { trigger: '.discipline-title', start: 'top 90%', once: true } });
     document.querySelectorAll('.name-line').forEach((line, index) => {
@@ -153,6 +147,6 @@ const nameLines = ['N.MANDRAKE', 'GABRIEL'];
       .from('.capability .node', { opacity: .25, duration: .4, stagger: .06, ease: 'sine.out' }, .75);
     // Preserve the overlapping choreography, but give each movement time to read.
     timeline.timeScale(.7);
-  }));
+  });
   document.addEventListener('astro:before-swap', () => media.revert(), { once: true });
 </script>

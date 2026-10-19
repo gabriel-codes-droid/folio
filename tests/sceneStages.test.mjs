@@ -35,5 +35,5 @@ test('project details stay inside space, and small text uses local monospace', (
   assert.doesNotMatch(intro, /quick-projects|PROJECTS\.map/);
   assert.match(fonts, /--font-body: 'Geist Mono'/);
   assert.match(canvas, /href=\{selectedProject.url\}/);
-  assert.match(canvas, /!ready \|\| active \|\| warmingStage/);
+  assert.match(canvas, /ready && \(active \|\| warmingStage\)/);
 });
