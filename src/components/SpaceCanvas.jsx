@@ -109,10 +109,8 @@ export default function SpaceCanvas({ initialProgress = 0, onStagePrepared, stag
   const dialogRef = useRef(null);
   const warmingStage = !stageError && Object.keys(stages).some(stage => !readyStages[stage]);
   const handleReady = useCallback(() => { setReady(true); onStagePrepared('opening'); }, [onStagePrepared]);
-  const handleStageError = useCallback(() => {
-    setStageError(true);
-    reportBoot('error', 0, 'The planets could not prepare. Please reload.');
-  }, []);
+  // The page is already open by now: show the in-scene retry, not the loader.
+  const handleStageError = useCallback(() => setStageError(true), []);
 
   useEffect(() => {
     const update = event => setPreparation(previous => ({ ...event.detail, progress: Math.max(previous.progress, event.detail.progress) }));

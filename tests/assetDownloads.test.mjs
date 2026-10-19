@@ -269,7 +269,8 @@ test('download manifest matches shipped assets and excludes the full-size EXR', 
   assert.ok(SCENE_ASSETS.find(entry => entry.url.endsWith('.hdr')).bytes < 3 * 1024 * 1024);
   const wrapper = readFileSync(new URL('../src/components/SpaceExperience.jsx', import.meta.url), 'utf8');
   assert.match(wrapper, /opening: \(\) => import\('\.\/SpaceCanvas'\)/);
-  assert.match(wrapper, /prepare\(STAGE_ASSETS\[stage\]/);
-  assert.match(wrapper, /\.then\(imports\[stage\]\)/);
+  assert.match(wrapper, /return imports\[stage\]\(\);/);
+  const downloads = readFileSync(new URL('../src/components/sceneDownloads.js', import.meta.url), 'utf8');
+  assert.match(downloads, /prepare\(STAGE_ASSETS\[stage\]/);
   assert.doesNotMatch(wrapper, /location.reload/);
 });

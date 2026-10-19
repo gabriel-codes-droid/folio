@@ -82,6 +82,9 @@ const ticks = Array.from({ length: 9 }, (_, index) => index);
 </script>
 <script>
   import { initBootLoader } from '../scripts/bootLoader.js';
+  import { startSceneDownloads } from './sceneDownloads.js';
+  // Start the models now, not after the 3D bundle and React have loaded.
+  startSceneDownloads();
   initBootLoader();
 </script>
 

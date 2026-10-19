@@ -2,22 +2,12 @@ import { useEffect, useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { useProgress } from '@react-three/drei';
 import * as THREE from 'three';
+import { reportBoot } from './bootProgress';
 
-// detail carries per-row fractions for the loader manifest (guide, moon...).
-export function reportBoot(stage, progress, error = '', detail = {}) {
-  const hud = document.getElementById('boot-hud');
-  if (hud) {
-    hud.dataset.stage = stage;
-    hud.dataset.progress = String(progress);
-    hud.dataset.error = error;
-    for (const [key, value] of Object.entries(detail)) hud.dataset[key] = String(value);
-  }
-  window.dispatchEvent(new CustomEvent('portfolio:preparation', { detail: { stage, progress, error } }));
-  window.dispatchEvent(new Event('portfolio:boot'));
-}
+export { reportBoot };
 
 export function AssetProgress() {
-  // Byte progress is reported by SpaceExperience; this only surfaces failures.
+  // Byte progress is reported by sceneDownloads; this only surfaces failures.
   const { errors } = useProgress();
   useEffect(() => {
     if (errors.length) reportBoot('error', 0, 'An asset could not load. Reload to retry.');

@@ -172,7 +172,7 @@ test('readiness lost during the 100% pause prevents the reveal', () => {
   } finally { h.restore(); }
 });
 
-test('boot progress waits for both the guide and the planets to be warmed', () => {
+test('boot progress opens the page once the guide is warmed; planets follow', () => {
   const assets = [
     { url: '/models/bot.glb', bytes: 100 },
     { url: '/models/moon.glb', bytes: 50 },
@@ -182,9 +182,11 @@ test('boot progress waits for both the guide and the planets to be warmed', () =
   assert.equal(groups.guide, 1);
   assert.equal(groups.moon, .5);
   assert.equal(groups.planets, 0);
-  assert.equal(bootProgress(groups, {}).stage, 'loading');
-  const done = groupBytes({ '/models/bot.glb': 100, '/models/moon.glb': 50, '/models/lava_planet.glb': 50 }, assets);
-  assert.equal(bootProgress(done, { opening: 1 }).stage, 'preparing');
-  assert.ok(bootProgress(done, { opening: 1 }).progress < 1);
-  assert.deepEqual(bootProgress(done, { opening: 1, moon: 1 }), { stage: 'ready', progress: 1 });
+  assert.equal(groups.destination, .25);
+  assert.equal(bootProgress(groupBytes({ '/models/bot.glb': 40 }, assets), {}).stage, 'loading');
+  // Guide downloaded but not warmed: still preparing, below 100%.
+  assert.equal(bootProgress(groups, {}).stage, 'preparing');
+  assert.ok(bootProgress(groups, {}).progress < 1);
+  // The moon and planets do not hold the page.
+  assert.deepEqual(bootProgress(groups, { opening: 1 }), { stage: 'ready', progress: 1 });
 });
