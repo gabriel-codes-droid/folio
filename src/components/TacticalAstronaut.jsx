@@ -103,7 +103,9 @@ function createBootFlame() {
   light.position.set(0, -0.18, 0);
   light.castShadow = false;
 
-  group.add(nozzle, plume, shell, core, heatGlow, light);
+  // The light is attached beside the flame, not inside it: hiding a light
+  // changes the scene's light count and recompiles every shader mid-flight.
+  group.add(nozzle, plume, shell, core, heatGlow);
   group.name = 'bootFlame';
   group.visible = false;
   group.userData = { nozzle, plume, shell, core, heatGlow, light };
@@ -411,7 +413,8 @@ export default function TacticalAstronaut({ phase, position = [0, 0, 0], scale =
     const rightFoot = astronaut.getObjectByName('foot_r_067');
     [leftFoot, rightFoot].forEach((foot) => {
       if (!foot || foot.getObjectByName('bootFlame')) return;
-      foot.add(createBootFlame());
+      const flame = createBootFlame();
+      foot.add(flame, flame.userData.light);
     });
   }, [astronaut]);
 

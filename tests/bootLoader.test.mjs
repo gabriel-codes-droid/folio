@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { initBootLoader } from '../src/scripts/bootLoader.js';
-import { createRollingCounter } from '../src/scripts/rollingCounter.js';
+import { createNumberSwap } from '../src/scripts/numberSwap.js';
+import { bootProgress, groupBytes } from '../src/components/bootProgress.js';
 
 // Exercise the real loader against a controlled DOM/clock so GPU preparation
 // can be slow, cached, or fail without downloading the large scene per case.
@@ -13,19 +14,21 @@ function harness(stage = 'loading', progress = '0') {
     attributes = {};
     children = [];
     hidden = false;
+    textContent = '';
+    className = '';
+    querySelector() { return null; }
+    querySelectorAll() { return []; }
     style = { setProperty() {} };
     setAttribute(key, value) { this.attributes[key] = value; }
     get firstElementChild() { return this.children[0]; }
     append(child) { this.children.push(child); child.parent = this; }
     replaceChildren() { this.children = []; }
-    remove() { this.parent.children = this.parent.children.filter(child => child !== this); }
+    remove() { if (this.parent) this.parent.children = this.parent.children.filter(child => child !== this); }
   }
-  const elements = new Map(['boot-hud', 'boot-canvas', 'boot-streaks', 'boot-gauge', 'boot-bar-fill', 'boot-rocket', 'boot-exhaust', 'boot-number', 'boot-announcement', 'boot-error', 'boot-retry'].map(id => [id, new Element()]));
+  const elements = new Map(['boot-hud', 'boot-panel', 'boot-progress', 'boot-rocket', 'boot-trail', 'boot-altitude', 'boot-clock', 'boot-number', 'boot-announcement', 'boot-error', 'boot-retry'].map(id => [id, new Element()]));
   const root = elements.get('boot-hud');
   root.dataset = { stage, progress };
   elements.get('boot-error').hidden = true;
-  elements.get('boot-number').append(new Element());
-  elements.get('boot-canvas').getContext = () => null;
   const window = new EventTarget();
   Object.assign(window, {
     innerWidth: 1000, innerHeight: 700, devicePixelRatio: 1,
@@ -86,69 +89,59 @@ test('preparation, not elapsed time or download progress, unlocks the scene', ()
   } finally { h.restore(); }
 });
 
-test('a cached scene still shows the loader, holds 100%, then reveals once', () => {
+test('a cached scene still shows a brief launch, holds 100%, then reveals once', () => {
   const h = harness('ready', '1');
   try {
-    h.advance(4100);
+    h.advance(600);
     assert.equal(h.revealed(), 0);
-    assert.notEqual(h.root.dataset.presentation, 'revealing');
-    for (let i = 0; i < 600 && h.root.dataset.presentation !== 'complete'; i++) h.advance(20);
+    assert.notEqual(h.root.dataset.presentation, 'complete');
+    for (let i = 0; i < 300 && h.root.dataset.presentation !== 'complete'; i++) h.advance(20);
     assert.equal(h.root.dataset.presentation, 'complete');
-    h.advance(200);
-    assert.equal(h.root.dataset.presentation, 'complete');
-    h.advance(2500);
+    h.advance(3000);
     assert.equal(h.revealed(), 1);
     assert.equal(h.root.dataset.revealed, 'true');
   } finally { h.restore(); }
 });
 
-test('counter changes only the necessary columns, including 9/10 and 99/100 carries', () => {
-  const h = harness();
+test('a cached load starts opening the page in under two seconds', () => {
+  const h = harness('ready', '1');
   try {
-    const container = h.elements.get('boot-number');
-    const counter = createRollingCounter(container);
-    const strips = container.children.map(slot => slot.firstElementChild);
-    const calls = [0, 0, 0];
-    const animations = [];
-    strips.forEach((strip, index) => {
-      strip.animate = (frames, options) => {
-        calls[index]++;
-        assert.equal(frames[0].transform, 'translate3d(0, -50%, 0)');
-        assert.equal(frames[1].transform, 'translate3d(0, 0, 0)');
-        assert.ok(options.duration > 0);
-        const animation = { cancel() {}, onfinish: null };
-        animations.push(animation);
-        return animation;
-      };
-    });
-    const settle = () => animations.splice(0).forEach(animation => animation.onfinish());
-    for (let value = 1; value <= 9; value++) { counter.set(value); settle(); }
-    assert.deepEqual(calls, [0, 0, 9]);
-    counter.set(10); settle();
-    assert.deepEqual(calls, [0, 1, 10]);
-    for (let value = 11; value <= 99; value++) { counter.set(value); settle(); }
-    assert.deepEqual(calls, [0, 9, 99]);
-    counter.set(100); settle();
-    assert.deepEqual(calls, [1, 10, 100]);
-    assert.equal(strips.map(strip => strip.children[1].textContent).join(''), '100');
-    counter.set(100);
-    assert.equal(animations.length, 0);
-    assert.ok(strips.every(strip => strip.children.length === 2));
+    let elapsed = 0;
+    while (h.root.dataset.presentation !== 'revealing' && elapsed < 10000) { h.advance(50); elapsed += 50; }
+    assert.ok(elapsed < 2000, `panel lifted after ${elapsed}ms`);
   } finally { h.restore(); }
 });
 
-test('large progress updates count in order without overlapping digit transitions', () => {
-  const h = harness('ready', '1');
+test('the percentage replaces whole numbers, only ever rising, ending on 100', () => {
+  const h = harness('loading', '0');
   try {
-    let previous = 0;
-    for (let i = 0; i < 1200 && !h.revealed(); i++) {
+    let previous = 0, changes = 0;
+    for (let i = 0; i < 400 && !h.revealed(); i++) {
+      if (i === 30) h.report('loading', .4);
+      if (i === 80) h.report('preparing', .9);
+      if (i === 140) h.report('ready', 1);
       h.advance(16);
-      const value = Number(h.root.dataset.displayProgress);
-      assert.ok(value === previous || value === previous + 1);
+      const value = Number(h.root.dataset.displayProgress ?? 0);
+      assert.ok(value >= previous);
+      if (value !== previous) changes++;
       previous = value;
     }
     assert.equal(previous, 100);
-    assert.equal(h.revealed(), 1);
+    assert.ok(changes < 60, 'large jumps are shown directly instead of counting every integer');
+  } finally { h.restore(); }
+});
+
+test('number swap keeps at most one outgoing value', () => {
+  const h = harness();
+  try {
+    const container = h.elements.get('boot-number');
+    const counter = createNumberSwap(container);
+    for (const value of [3, 9, 27, 64, 100]) counter.set(value);
+    const values = container.children.filter(child => child.className === 'boot-number-value');
+    assert.ok(values.length <= 2);
+    assert.equal(values.at(-1).textContent, '100');
+    counter.set(100);
+    assert.equal(container.children.filter(child => child.className === 'boot-number-value').length, values.length);
   } finally { h.restore(); }
 });
 
@@ -167,16 +160,31 @@ test('an asset failure keeps the loader and shows retry instead of a false 100%'
 test('readiness lost during the 100% pause prevents the reveal', () => {
   const h = harness('ready', '1');
   try {
-    for (let i = 0; i < 1000 && h.root.dataset.presentation !== 'complete'; i++) h.advance(20);
+    for (let i = 0; i < 1000 && h.root.dataset.presentation !== 'complete'; i++) h.advance(10);
     assert.equal(h.root.dataset.presentation, 'complete');
     h.report('preparing', .95);
     h.advance(5000);
     assert.equal(h.revealed(), 0);
     assert.ok(h.lock.has('portfolio-booting'));
     h.report('ready', 1);
-    h.advance(400);
-    assert.equal(h.revealed(), 0);
-    h.advance(2000);
+    h.advance(3000);
     assert.equal(h.revealed(), 1);
   } finally { h.restore(); }
+});
+
+test('boot progress waits for both the guide and the planets to be warmed', () => {
+  const assets = [
+    { url: '/models/bot.glb', bytes: 100 },
+    { url: '/models/moon.glb', bytes: 50 },
+    { url: '/models/lava_planet.glb', bytes: 50 },
+  ];
+  const groups = groupBytes({ '/models/bot.glb': 100, '/models/moon.glb': 25 }, assets);
+  assert.equal(groups.guide, 1);
+  assert.equal(groups.moon, .5);
+  assert.equal(groups.planets, 0);
+  assert.equal(bootProgress(groups, {}).stage, 'loading');
+  const done = groupBytes({ '/models/bot.glb': 100, '/models/moon.glb': 50, '/models/lava_planet.glb': 50 }, assets);
+  assert.equal(bootProgress(done, { opening: 1 }).stage, 'preparing');
+  assert.ok(bootProgress(done, { opening: 1 }).progress < 1);
+  assert.deepEqual(bootProgress(done, { opening: 1, moon: 1 }), { stage: 'ready', progress: 1 });
 });

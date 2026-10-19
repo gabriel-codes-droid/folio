@@ -1,45 +1,76 @@
+---
+// Earth-to-Moon launch: the rocket's altitude is the real loading progress,
+// the manifest lists what is actually being prepared, and the page opens only
+// after the guide, moon and every planet are warmed on the GPU.
+const rows = [
+  { key: 'guide', index: '01', label: 'GUIDE / MECH UNIT' },
+  { key: 'moon', index: '02', label: 'LUNAR SURFACE' },
+  { key: 'planets', index: '03', label: 'PLANETS 01—04' },
+  { key: 'gpu', index: '04', label: 'SHADERS / GPU' },
+];
+const ticks = Array.from({ length: 9 }, (_, index) => index);
+---
 <div id="boot-hud" data-stage="loading" data-progress="0" data-presentation="loading" aria-busy="true">
-  <div id="boot-curtain" aria-hidden="true"></div>
-  <canvas id="boot-canvas" aria-hidden="true"></canvas>
-  <div id="boot-streaks" aria-hidden="true"></div>
+  <div id="boot-panel">
+    <div class="boot-stars" aria-hidden="true"></div>
+    <div class="boot-stars boot-stars-near" aria-hidden="true"></div>
 
-  <div id="boot-gauge" role="progressbar" aria-label="Loading portfolio" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
-    <!-- Inverted reference: white travelled section, black space ahead,
-         white rocket and border. The SVG stays sharp at every viewport. -->
-    <svg id="boot-bar" viewBox="0 0 1000 140" aria-hidden="true">
-      <defs>
-        <clipPath id="boot-track-clip"><rect x="6" y="6" width="988" height="128" rx="64" /></clipPath>
-      </defs>
-      <rect x="6" y="6" width="988" height="128" rx="64" fill="#000" stroke="#fff" stroke-width="12" />
-      <g clip-path="url(#boot-track-clip)">
-        <rect id="boot-bar-fill" x="0" y="0" width="0" height="140" fill="#fff" />
-        <g id="boot-exhaust" fill="#000" stroke="#000" stroke-linecap="round">
-          <circle cx="-12" cy="49" r="3"/><circle cx="-35" cy="90" r="4"/>
-          <circle cx="-67" cy="43" r="2"/><circle cx="-100" cy="86" r="2.5"/>
-          <path d="M-8 70h-28 M-27 57h-24 M-47 80h-31 M-77 62h-14" stroke-width="3"/>
-        </g>
-        <g id="boot-rocket" transform="translate(20 70)">
-          <g fill="#fff" stroke="#000" stroke-width="4" stroke-linejoin="round">
-            <path d="M31-17 9-37 -1-36 5-8 M31 17 9 37 -1 36 5 8" />
-            <path d="M6-21C37-29 63-22 81 0 63 22 37 29 6 21Z" />
-            <path d="M6-21H-3V21H6Z" />
-            <ellipse cx="48" cy="0" rx="10" ry="12" fill="#000" />
-            <path d="M68-12 64 0 68 12" fill="none" />
-          </g>
-        </g>
-      </g>
-    </svg>
-    <p class="boot-loading-label" aria-hidden="true">LOADING<span class="boot-loading-dots"> ....</span></p>
-  </div>
+    <header class="boot-header" aria-hidden="true">
+      <span class="boot-mark">N.MG<span>.</span></span>
+      <span class="boot-mono">LAUNCH SEQUENCE / EARTH → MOON</span>
+      <span class="boot-mono" id="boot-clock">T+ 00:00.00</span>
+    </header>
 
-  <div class="boot-counter" aria-hidden="true">
-    <span id="boot-number" class="boot-number"><span class="boot-number-value">0</span></span>
-    <span class="boot-percent">%</span>
-  </div>
-  <p id="boot-announcement" class="boot-sr-only" role="status" aria-live="polite">Loading your space journey.</p>
-  <div id="boot-error" hidden>
-    <p>Something couldn’t load. Please try again.</p>
-    <button id="boot-retry" type="button">Reload scene</button>
+    <div class="boot-flight" aria-hidden="true">
+      <span class="boot-mono boot-flight-label boot-flight-top">DESTINATION<br/><b>THE MOON</b> · 384 400 KM</span>
+      <div class="boot-track">
+        <span class="boot-path"></span>
+        <span class="boot-trail" id="boot-trail"></span>
+        <ol class="boot-ticks">{ticks.map(tick => <li style={`--tick:${tick / 8}`}><span>{String(Math.round(384400 * (1 - tick / 8) / 1000)).padStart(3, '0')}K</span></li>)}</ol>
+        <div class="boot-rocket" id="boot-rocket">
+          <span class="boot-mono boot-altitude" id="boot-altitude">000 000 KM</span>
+          <div class="boot-rocket-body">
+            <svg viewBox="0 0 60 190" width="60" height="190">
+              <g class="boot-flame">
+                <path class="boot-flame-outer" d="M18 146 C18 170 26 182 30 190 C34 182 42 170 42 146 Z"/>
+                <path class="boot-flame-inner" d="M23 146 C23 162 28 172 30 178 C32 172 37 162 37 146 Z"/>
+              </g>
+              <g class="boot-hull">
+                <path d="M12 110 1 140 12 134 Z M48 110 59 140 48 134 Z"/>
+                <path d="M30 4C43 20 48 42 48 70V132H12V70C12 42 17 20 30 4Z"/>
+                <path d="M20 132 17 146H43L40 132"/>
+                <circle cx="30" cy="62" r="7.5"/>
+                <circle class="boot-port" cx="30" cy="62" r="3.5"/>
+                <path class="boot-detail" d="M12 96H48M12 103H48M30 116V132"/>
+              </g>
+            </svg>
+          </div>
+        </div>
+      </div>
+      <span class="boot-mono boot-flight-label boot-flight-base">LAUNCH PAD<br/><b>EARTH</b> · 000 000 KM</span>
+    </div>
+
+    <ol class="boot-manifest" aria-hidden="true">
+      <li class="boot-mono boot-manifest-head"><span>PAYLOAD MANIFEST</span><span>STATUS</span></li>
+      {rows.map(row => <li class="boot-row" data-row={row.key} data-state="queued">
+        <span class="boot-mono boot-row-index">{row.index}</span>
+        <span class="boot-mono boot-row-label">{row.label}</span>
+        <span class="boot-mono boot-row-status">QUEUED</span>
+        <span class="boot-row-rule"><span class="boot-row-bar"></span></span>
+      </li>)}
+    </ol>
+
+    <div class="boot-counter" id="boot-progress" role="progressbar" aria-label="Loading portfolio" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+      <span class="boot-number" id="boot-number" aria-hidden="true"></span>
+      <span class="boot-percent" aria-hidden="true">%</span>
+    </div>
+
+    <p id="boot-announcement" class="boot-sr-only" role="status" aria-live="polite">Loading your space journey.</p>
+    <div id="boot-error" hidden>
+      <p class="boot-mono">LAUNCH ABORTED</p>
+      <p>Something couldn’t load. Check your connection and try again.</p>
+      <button id="boot-retry" type="button">Retry launch ↻</button>
+    </div>
   </div>
 </div>
 
@@ -57,67 +88,127 @@
 <style is:global>
   html.portfolio-booting, html.portfolio-booting body { overflow: hidden !important; overscroll-behavior: none; }
   #boot-hud {
-    position: fixed; inset: 0; z-index: 9999; isolation: isolate;
-    display: grid; place-items: center; overflow: hidden;
-    color: #fff; user-select: none; touch-action: none;
+    --ink: #f3f3f0; --dim: #7d8386; --line: #ffffff1f; --accent: #b7d7e9;
+    --ease: cubic-bezier(.76, 0, .24, 1);
+    position: fixed; inset: 0; z-index: 9999; color: var(--ink);
+    user-select: none; touch-action: none; pointer-events: auto;
   }
   #boot-hud[hidden] { display: none; }
-  #boot-curtain {
-    position: absolute; inset: 0; background: #000;
-    transform: scaleY(1); transform-origin: center top; will-change: transform;
-    transition: transform 1000ms cubic-bezier(.76, 0, .24, 1);
+  #boot-panel {
+    position: absolute; inset: 0; overflow: hidden; background: #050505;
+    transition: transform 1100ms var(--ease);
+    will-change: transform;
   }
-  #boot-hud[data-presentation="revealing"] #boot-curtain { transform: scaleY(0); }
-  #boot-gauge, .boot-counter {
-    transition: transform 800ms cubic-bezier(.76, 0, .24, 1), opacity 500ms ease 500ms;
+  /* A thin horizon line trails the lifting panel, like a hatch opening. */
+  #boot-panel::after {
+    content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 1px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent); opacity: 0;
+    transition: opacity 300ms ease;
   }
-  #boot-hud[data-presentation="revealing"] #boot-gauge,
-  #boot-hud[data-presentation="revealing"] .boot-counter { transform: translate3d(0, -35vh, 0); opacity: 0; }
-  #boot-canvas, #boot-streaks { transition: opacity 350ms ease; }
-  #boot-hud[data-presentation="revealing"] #boot-canvas,
-  #boot-hud[data-presentation="revealing"] #boot-streaks { opacity: 0; }
-  #boot-canvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
-  #boot-streaks { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
-  .boot-streak {
-    position: absolute; left: 50%; top: 50%; width: 32px; height: 1px;
-    background: linear-gradient(90deg, transparent, #fff); opacity: 0;
-    animation: boot-shoot var(--flight-time) linear var(--flight-delay) infinite;
-  }
-  @keyframes boot-shoot {
-    0% { transform: translate3d(var(--start-x), var(--start-y), 0) rotate(var(--angle)) scaleX(.1); opacity: 0; }
-    22% { opacity: .6; }
-    80% { opacity: .6; }
-    100% { transform: translate3d(var(--end-x), var(--end-y), 0) rotate(var(--angle)) scaleX(1); opacity: 0; }
-  }
-  #boot-gauge { position: relative; width: min(560px, 76vw); }
-  #boot-bar { display: block; width: 100%; overflow: visible; }
-  .boot-loading-label {
-    position: absolute; top: calc(100% + 28px); left: 0; width: 100%;
-    margin: 0; text-align: center; color: #fff;
-    font-family: var(--font-inter, system-ui), sans-serif;
-    font-size: clamp(24px, 3vw, 40px); font-weight: 500;
-    line-height: 1.2; letter-spacing: .16em;
-  }
-  .boot-loading-dots { letter-spacing: .08em; }
-  .boot-counter {
-    position: absolute; right: max(6vw, 24px); bottom: max(6vh, 28px);
-    display: flex; align-items: flex-start; gap: .1em;
-    font-family: var(--font-inter, system-ui), sans-serif;
-    font-size: clamp(66px, 9vw, 132px); font-weight: 400;
-    font-variant-numeric: tabular-nums; letter-spacing: -.06em; line-height: 1;
-  }
-  .boot-number { display: flex; width: 1.95em; height: 1.04em; letter-spacing: 0; }
-  .boot-digit { display: block; flex: 1; height: 1.04em; overflow: hidden; contain: paint; }
-  .boot-digit-strip { display: block; height: 2.08em; transform: translate3d(0, -50%, 0); will-change: transform; }
-  .boot-digit-strip > span { display: block; height: 1.04em; text-align: center; white-space: pre; }
-  .boot-percent { font-size: .28em; letter-spacing: -.035em; margin-top: .3em; }
-  #boot-error { position: absolute; bottom: 12%; left: 7%; max-width: 52%; font-size: 14px; line-height: 1.5; }
+  #boot-hud[data-presentation="revealing"] #boot-panel { transform: translate3d(0, -100%, 0); }
+  #boot-hud[data-presentation="revealing"] #boot-panel::after { opacity: .8; }
+  #boot-hud[data-presentation="revealing"] { pointer-events: none; }
+
+  .boot-mono { font: 400 11px/1.5 var(--font-mono); letter-spacing: .12em; color: var(--dim); }
+  .boot-mono b { font-weight: 500; color: var(--ink); }
+
+  .boot-stars { position: absolute; left: 0; right: 0; top: 0; height: 200%; pointer-events: none;
+    background-image: radial-gradient(1px 1px at 12% 8%, #fff8, transparent), radial-gradient(1px 1px at 68% 22%, #fff6, transparent),
+      radial-gradient(1px 1px at 35% 41%, #fff5, transparent), radial-gradient(1px 1px at 84% 57%, #fff7, transparent),
+      radial-gradient(1px 1px at 22% 73%, #fff5, transparent), radial-gradient(1px 1px at 57% 88%, #fff6, transparent),
+      radial-gradient(1px 1px at 93% 12%, #fff4, transparent), radial-gradient(1px 1px at 4% 46%, #fff4, transparent);
+    background-size: 100% 50%; transform: translate3d(0, -50%, 0); opacity: .7; }
+  .boot-stars-near { background-image: radial-gradient(1.5px 3px at 18% 30%, #fffa, transparent), radial-gradient(1.5px 3px at 76% 64%, #fff9, transparent),
+      radial-gradient(1.5px 3px at 46% 12%, #fff8, transparent), radial-gradient(1.5px 3px at 90% 90%, #fff8, transparent); opacity: .55; }
+  /* Quiet dot grid echoing the intro surface beneath. */
+  #boot-panel::before { content: ''; position: absolute; inset: 0; pointer-events: none;
+    background-image: radial-gradient(#ffffff14 1px, transparent 1px); background-size: 28px 28px;
+    mask-image: radial-gradient(ellipse at 30% 50%, #000 0%, transparent 75%); }
+
+  .boot-header { position: absolute; top: 0; left: 0; right: 0; display: flex; align-items: center; justify-content: space-between;
+    height: 76px; padding: 0 max(4vw, 20px); border-bottom: 1px solid var(--line); }
+  .boot-mark { font: 500 28px/1 'PP Neue Montreal', 'Neue Montreal', Arial, sans-serif; letter-spacing: -.07em; }
+  .boot-mark span { color: #91bbca; }
+  #boot-clock { font-variant-numeric: tabular-nums; color: var(--ink); min-width: 12ch; text-align: right; }
+
+  .boot-flight { position: absolute; left: clamp(36px, 16vw, 280px); top: 116px; bottom: calc(max(5vh, 28px) + 250px); width: 220px;
+    display: flex; flex-direction: column; align-items: flex-start; }
+  .boot-flight-label { position: relative; z-index: 1; }
+  .boot-flight-top { margin-bottom: 18px; }
+  .boot-flight-base { margin-top: 18px; }
+  .boot-track { position: relative; flex: 1; width: 60px; container-type: size; }
+  .boot-path { position: absolute; left: 50%; top: 0; bottom: 0; width: 1px;
+    background: repeating-linear-gradient(to bottom, #ffffff38 0 4px, transparent 4px 10px); }
+  .boot-trail { position: absolute; left: calc(50% - .5px); bottom: 0; width: 1px; height: 100%;
+    background: linear-gradient(to top, #ffffff00, var(--accent) 70%, #fff); transform-origin: bottom; transform: scaleY(0); }
+  .boot-ticks { list-style: none; position: absolute; inset: 0; }
+  .boot-ticks li { position: absolute; left: calc(50% + 14px); top: calc(var(--tick) * 100%); width: 10px; height: 1px; background: #ffffff40; }
+  .boot-ticks span { position: absolute; left: 18px; top: -7px; font: 400 9px/1 var(--font-mono); letter-spacing: .1em; color: #ffffff40; white-space: nowrap; }
+  .boot-rocket { position: absolute; left: 50%; bottom: 0; width: 60px; height: 190px; transform: translate3d(-50%, 0, 0); will-change: transform; }
+  .boot-rocket-body { transition: transform 520ms cubic-bezier(.55, 0, .85, .25), opacity 300ms ease 260ms; }
+  .boot-rocket svg { display: block; overflow: visible; }
+  .boot-hull path, .boot-hull circle { fill: #050505; stroke: var(--ink); stroke-width: 1.4; stroke-linejoin: round; }
+  .boot-hull .boot-port { fill: var(--accent); stroke: none; }
+  .boot-hull .boot-detail { fill: none; stroke: #ffffff70; stroke-width: 1; }
+  .boot-flame { transform-origin: 30px 146px; animation: boot-flicker 120ms steps(2) infinite alternate; }
+  .boot-flame-outer { fill: #b7d7e955; }
+  .boot-flame-inner { fill: #fff; }
+  @keyframes boot-flicker { from { transform: scaleY(.86) scaleX(1.04); } to { transform: scaleY(1.08) scaleX(.96); } }
+  .boot-altitude { position: absolute; left: calc(100% + 34px); top: 56px; white-space: nowrap; color: var(--ink);
+    font-variant-numeric: tabular-nums; padding-left: 14px; border-left: 1px solid var(--accent); }
+  #boot-hud[data-presentation="launch"] .boot-rocket-body,
+  #boot-hud[data-presentation="revealing"] .boot-rocket-body { transform: translate3d(0, -120vh, 0); opacity: 0; }
+  #boot-hud[data-presentation="launch"] .boot-flame,
+  #boot-hud[data-presentation="revealing"] .boot-flame { animation-duration: 60ms; transform: scaleY(1.6); }
+
+  .boot-manifest { position: absolute; left: max(4vw, 20px); bottom: max(5vh, 28px); width: min(380px, 40vw); list-style: none; display: grid; gap: 14px; }
+  .boot-manifest-head { display: flex; justify-content: space-between; padding-bottom: 10px; border-bottom: 1px solid var(--line); color: #ffffff55; }
+  .boot-row { display: grid; grid-template-columns: 30px 1fr auto; row-gap: 8px; align-items: baseline; }
+  .boot-row-label { color: #c9cccd; }
+  .boot-row-status { font-variant-numeric: tabular-nums; text-align: right; min-width: 7ch; }
+  .boot-row[data-state="active"] .boot-row-status { color: var(--ink); }
+  .boot-row[data-state="done"] .boot-row-status { color: var(--accent); }
+  .boot-row-rule { grid-column: 1 / -1; height: 1px; background: var(--line); overflow: hidden; }
+  .boot-row-bar { display: block; height: 100%; background: var(--ink); transform: scaleX(0); transform-origin: left; transition: transform 400ms cubic-bezier(.2, .8, .2, 1); }
+  .boot-row[data-state="done"] .boot-row-bar { background: var(--accent); }
+
+  .boot-counter { position: absolute; right: max(3vw, 16px); bottom: max(2.5vh, 14px); display: flex; align-items: flex-start;
+    font-family: 'PP Neue Montreal', 'Neue Montreal', Arial, Helvetica, sans-serif; font-weight: 500;
+    font-size: clamp(120px, 22vw, 360px); line-height: .8; letter-spacing: -.07em; font-variant-numeric: tabular-nums; }
+  .boot-number { position: relative; display: block; overflow: clip; padding: .06em .04em .02em 0; }
+  .boot-number-sizer { visibility: hidden; display: block; }
+  .boot-number-value { position: absolute; right: .04em; bottom: .02em; will-change: transform, opacity; }
+  .boot-percent { font: 400 clamp(14px, 1.3vw, 20px)/1 var(--font-mono); letter-spacing: .1em; color: var(--dim); margin: .9em 0 0 .6em; }
+  #boot-hud[data-presentation="complete"] .boot-percent,
+  #boot-hud[data-presentation="launch"] .boot-percent { color: var(--accent); }
+
+  #boot-error { position: absolute; left: clamp(36px, 16vw, 280px); top: 42%; max-width: 360px; z-index: 2;
+    padding: 24px; border: 1px solid #ffffff30; background: #050505ee; font-size: 14px; line-height: 1.5; display: grid; gap: 10px; }
   #boot-error[hidden] { display: none; }
-  #boot-retry { margin-top: 14px; padding: 10px 20px; border: 1px solid #fff; border-radius: 99px; background: #000; color: #fff; cursor: pointer; }
-  #boot-retry:focus-visible { outline: 2px solid #fff; outline-offset: 5px; }
+  #boot-error .boot-mono { color: #ff8b7a; }
+  #boot-retry { justify-self: start; margin-top: 6px; padding: 10px 20px; border: 1px solid var(--ink); border-radius: 99px; background: transparent; color: var(--ink); font: 12px var(--font-mono); letter-spacing: .08em; cursor: pointer; }
+  #boot-retry:focus-visible { outline: 2px solid var(--accent); outline-offset: 5px; }
+  #boot-hud[data-presentation="error"] .boot-flame { display: none; }
   .boot-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+  @media (max-width: 760px) {
+    .boot-header { height: 60px; }
+    .boot-header .boot-mono:nth-child(2) { display: none; }
+    .boot-mark { font-size: 22px; }
+    .boot-flight { left: 50%; transform: translateX(-30px); top: 84px; bottom: calc(31vw + 236px); width: auto; }
+    .boot-flight-label { display: none; }
+    .boot-rocket { width: 40px; height: 127px; }
+    .boot-rocket svg { width: 40px; height: 127px; }
+    .boot-track { width: 40px; }
+    .boot-altitude { left: calc(100% + 26px); top: 30px; }
+    .boot-manifest { left: 20px; right: 20px; width: auto; bottom: calc(31vw + 34px); gap: 10px; }
+    .boot-counter { font-size: 34vw; right: 14px; bottom: 14px; }
+    #boot-error { left: 20px; right: 20px; top: 30%; }
+  }
+  @media (max-height: 640px) and (min-width: 761px) { .boot-ticks span { display: none; } }
   @media (prefers-reduced-motion: reduce) {
-    #boot-curtain, #boot-gauge, .boot-counter, #boot-canvas, #boot-streaks { transition-duration: 180ms; transition-delay: 0ms; }
-    .boot-streak { animation: none; }
+    #boot-panel { transition-duration: 200ms; }
+    .boot-flame { animation: none; }
+    .boot-rocket-body { transition: none; }
   }
 </style>

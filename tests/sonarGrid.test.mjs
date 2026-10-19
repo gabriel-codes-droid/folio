@@ -19,5 +19,5 @@ test('sonar grid is an off-screen-paused canvas animation with no text content',
   assert.match(sonarGrid, /prefers-reduced-motion/);
   assert.match(sonarGrid, /requestAnimationFrame/);
   assert.doesNotMatch(sonarGrid, /<p|<h[1-6]|textContent/);
-  assert.match(sonarGrid, /color = '#e4e4e4'/);
+  assert.match(sonarGrid, /color = '#f5f5f5'/);
 });

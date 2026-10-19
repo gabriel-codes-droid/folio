@@ -3,6 +3,7 @@ import SpaceCanvas from '../components/SpaceExperience';
 import Layout from '../layouts/Layout.astro';
 import PortfolioIntro from '../components/PortfolioIntro.astro';
 import PortfolioOutro from '../components/PortfolioOutro';
+import BootLoader from '../components/BootLoader.astro';
 import '../styles/editorial.css';
 import '../styles/editorial-refinements.css';
 import '../styles/scene-loading.css';
@@ -12,6 +13,7 @@ export const prerender = true;
 ---
 
 <Layout title="N. MANDRAKE GABRIEL | Full Stack Developer">
+  <BootLoader />
   <PortfolioIntro />
   <SpaceCanvas client:only="react" />
   <PortfolioOutro client:load />

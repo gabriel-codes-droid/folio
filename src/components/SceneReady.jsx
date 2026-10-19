@@ -3,25 +3,25 @@ import { useFrame, useThree } from '@react-three/fiber';
 import { useProgress } from '@react-three/drei';
 import * as THREE from 'three';
 
-export function reportBoot(stage, progress, error = '') {
+// detail carries per-row fractions for the loader manifest (guide, moon...).
+export function reportBoot(stage, progress, error = '', detail = {}) {
   const hud = document.getElementById('boot-hud');
   if (hud) {
     hud.dataset.stage = stage;
     hud.dataset.progress = String(progress);
     hud.dataset.error = error;
+    for (const [key, value] of Object.entries(detail)) hud.dataset[key] = String(value);
   }
   window.dispatchEvent(new CustomEvent('portfolio:preparation', { detail: { stage, progress, error } }));
   window.dispatchEvent(new Event('portfolio:boot'));
 }
 
 export function AssetProgress() {
-  const { loaded, total, errors } = useProgress();
+  // Byte progress is reported by SpaceExperience; this only surfaces failures.
+  const { errors } = useProgress();
   useEffect(() => {
     if (errors.length) reportBoot('error', 0, 'An asset could not load. Reload to retry.');
-    else if (!document.getElementById('boot-hud') || document.getElementById('boot-hud')?.dataset.stage === 'loading') {
-      reportBoot('loading', total ? Math.min(0.8, loaded / total * 0.8) : 0);
-    }
-  }, [loaded, total, errors]);
+  }, [errors]);
   return null;
 }
 
@@ -41,7 +41,6 @@ export default function SceneReady({ onReady, quiet = false, onError, rootRef })
     let cancelled = false;
     const frame = () => new Promise(resolve => requestAnimationFrame(resolve));
     async function prepare() {
-      if (!quiet) reportBoot('preparing', 0.82);
       // CSS backgrounds are outside Three's loading manager.
       const background = new Image();
       background.src = '/images/stars-clean.png';
@@ -57,12 +56,10 @@ export default function SceneReady({ onReady, quiet = false, onError, rootRef })
           for (const value of Object.values(material)) if (value?.isTexture) textures.add(value);
         }
       });
-      let uploaded = 0;
       let batchStarted = performance.now();
       for (const texture of textures) {
         if (cancelled) return;
         gl.initTexture(texture);
-        if (!quiet) reportBoot('preparing', 0.82 + (++uploaded / textures.size) * 0.08);
         // Upload small textures together instead of paying a full rendered
         // frame per texture. Yield after a bounded CPU slice for the loader.
         if (performance.now() - batchStarted >= 4) {
@@ -78,21 +75,27 @@ export default function SceneReady({ onReady, quiet = false, onError, rootRef })
         object.visible = true;
         object.frustumCulled = false;
       });
+      // Compile against an offscreen target: the bloom composer renders the
+      // scene into a linear buffer, and program keys include the output colour
+      // space. Compiling for the sRGB screen built variants that were never
+      // used, then the real ones compiled synchronously (~25s on Iris Xe).
+      const target = new THREE.WebGLRenderTarget(64, 64, { type: THREE.HalfFloatType });
+      const previous = gl.getRenderTarget();
       let compilation;
       try {
+        gl.setRenderTarget(target);
         compilation = gl.compileAsync(root, camera, scene);
       } finally {
+        gl.setRenderTarget(previous);
         for (const [object, visible, culled] of objects) {
           object.visible = visible;
           object.frustumCulled = culled;
         }
       }
-      await compilation;
-      if (cancelled) return;
+      try { await compilation; } catch (error) { target.dispose(); throw error; }
+      if (cancelled) { target.dispose(); return; }
       // Submit all geometry once offscreen, including meshes outside the
       // opening camera. This pays first-use buffer uploads during loading.
-      const target = new THREE.WebGLRenderTarget(64, 64);
-      const previous = gl.getRenderTarget();
       try {
         for (const [object] of objects) { object.visible = true; object.frustumCulled = false; }
         gl.setRenderTarget(target);
@@ -105,7 +108,6 @@ export default function SceneReady({ onReady, quiet = false, onError, rootRef })
         }
         target.dispose();
       }
-      if (!quiet) reportBoot('rendering', 0.95);
       prepared.current = true;
     }
     prepare().catch(error => {
@@ -159,7 +161,6 @@ export default function SceneReady({ onReady, quiet = false, onError, rootRef })
     fence.current = null;
     finished.current = true;
     onReady();
-    if (!quiet) reportBoot('ready', 1);
   });
   return null;
 }

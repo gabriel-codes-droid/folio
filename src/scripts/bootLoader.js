@@ -1,148 +1,146 @@
 // The visual percentage follows actual preparation and never completes on a
-// timer alone. A cached load still gets a short, legible opening sequence.
-import { createRollingCounter, DIGIT_INTERVAL, DIGIT_DURATION } from './rollingCounter.js';
+// timer alone. A cached load still gets a short, legible launch.
+import { createNumberSwap, SWAP_INTERVAL } from './numberSwap.js';
 
-const MIN_VISIBLE_MS = 2200;
-const COMPLETION_HOLD_MS = 350;
-const REVEAL_MS = 1000;
+const MIN_VISIBLE_MS = 800;
+const COMPLETION_HOLD_MS = 220;
+const LAUNCH_MS = 520;
+const REVEAL_MS = 1100;
+const MOON_DISTANCE_KM = 384400;
+const ROWS = ['guide', 'moon', 'planets', 'gpu'];
+
+const formatKm = value => Math.round(value).toString().padStart(6, '0').replace(/(\d{3})(\d{3})$/, '$1 $2');
+const formatClock = ms => {
+  const total = Math.floor(ms / 10);
+  const centis = total % 100, seconds = Math.floor(total / 100) % 60, minutes = Math.floor(total / 6000);
+  return `T+ ${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}.${String(centis).padStart(2, '0')}`;
+};
 
 export function initBootLoader() {
   const root = document.getElementById('boot-hud');
   if (!root || root.dataset.initialized) return;
   root.dataset.initialized = 'true';
-  const canvas = document.getElementById('boot-canvas');
-  const streakLayer = document.getElementById('boot-streaks');
-  const context = canvas.getContext('2d');
-  const gauge = document.getElementById('boot-gauge');
-  const fill = document.getElementById('boot-bar-fill');
-  const rocket = document.getElementById('boot-rocket');
-  const exhaust = document.getElementById('boot-exhaust');
-  const number = document.getElementById('boot-number');
-  const announcement = document.getElementById('boot-announcement');
-  const error = document.getElementById('boot-error');
+  const $ = id => document.getElementById(id);
+  const panel = $('boot-panel');
+  const progressbar = $('boot-progress');
+  const rocket = $('boot-rocket');
+  const trail = $('boot-trail');
+  const altitude = $('boot-altitude');
+  const clock = $('boot-clock');
+  const announcement = $('boot-announcement');
+  const error = $('boot-error');
+  const stars = [...root.querySelectorAll('.boot-stars')];
+  const rows = Object.fromEntries(ROWS.map(key => [key, root.querySelector(`[data-row="${key}"]`)]));
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const counter = createNumberSwap($('boot-number'), reducedMotion);
   const started = performance.now();
   let lastFrame = started;
   let visibleTime = 0;
   let displayed = 0;
-  let barProgress = 0;
+  let shown = 0;
+  let lastSwapAt = -Infinity;
   let actual = 0;
   let ready = false;
   let failed = false;
   let pageLoaded = document.readyState === 'complete';
   let fontsLoaded = !document.fonts;
-  let lastInteger = 0;
-  let lastNumberAt = 0;
   let holdStarted = null;
-  let revealing = false;
+  let phase = 'loading';
   let disposed = false;
   let raf = 0;
-  let revealTimer = 0;
-  const counter = createRollingCounter(number, reducedMotion);
-  let width = 1, height = 1;
+  let timers = [];
+  const rowState = {};
 
-  const random = (min, max) => min + Math.random() * (max - min);
+  // Star layers drift on the compositor; only their playback rate changes,
+  // so they stay smooth while models parse on the main thread.
+  const drift = reducedMotion ? [] : stars.map((layer, index) => layer.animate?.(
+    [{ transform: 'translate3d(0, -50%, 0)' }, { transform: 'translate3d(0, 0, 0)' }],
+    { duration: index ? 9000 : 16000, iterations: Infinity },
+  )).filter(Boolean);
+
   const markPageLoaded = () => { pageLoaded = true; };
   window.addEventListener('load', markPageLoaded, { once: true });
   if (document.fonts) document.fonts.ready.then(() => { fontsLoaded = true; });
-
-  function resize() {
-    width = window.innerWidth;
-    height = window.innerHeight;
-    const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
-    canvas.width = Math.round(width * dpr);
-    canvas.height = Math.round(height * dpr);
-    context?.setTransform(dpr, 0, 0, dpr, 0, 0);
-    const stars = Array.from({ length: Math.min(180, Math.round(width * height / 6500)) }, () => ({
-      x: Math.random() * width, y: Math.random() * height,
-      radius: random(.45, 1.15), opacity: random(.12, .55),
-    }));
-    if (context) {
-      context.clearRect(0, 0, width, height);
-      context.fillStyle = '#fff';
-      for (const star of stars) {
-        context.globalAlpha = star.opacity;
-        context.beginPath();
-        context.arc(star.x, star.y, star.radius, 0, Math.PI * 2);
-        context.fill();
-      }
-      context.globalAlpha = 1;
-    }
-    // Transform animations run on the compositor even while large GLB/FBX
-    // parsing occupies the main thread. No per-frame canvas trails or arrays.
-    streakLayer.replaceChildren();
-    const radius = Math.hypot(width, height) * .58;
-    for (let i = 0; i < (reducedMotion ? 0 : 42); i++) {
-      const star = document.createElement('i');
-      const angle = random(0, Math.PI * 2);
-      const x = Math.cos(angle) * radius, y = Math.sin(angle) * radius;
-      star.className = 'boot-streak';
-      const properties = {
-        '--start-x': `${x * .06}px`, '--start-y': `${y * .06}px`,
-        '--end-x': `${x}px`, '--end-y': `${y}px`, '--angle': `${angle}rad`,
-        '--flight-time': `${random(3.2, 5.4)}s`, '--flight-delay': `${random(-6, 0)}s`,
-      };
-      for (const [key, value] of Object.entries(properties)) star.style.setProperty(key, value);
-      streakLayer.append(star);
-    }
-  }
-
-  function rollNumber(value) {
-    if (lastInteger === value) return;
-    counter.set(value);
-    lastInteger = value;
-    gauge.setAttribute('aria-valuenow', String(value));
-  }
 
   function readProgress() {
     if (disposed) return;
     if (root.dataset.stage === 'error') {
       failed = true;
       error.hidden = false;
+      root.dataset.presentation = 'error';
       announcement.textContent = root.dataset.error || 'Something couldn’t load. Please try again.';
       root.setAttribute('aria-busy', 'false');
       return;
     }
     actual = Math.max(actual, Math.min(.99, Number(root.dataset.progress) || 0));
     ready = root.dataset.stage === 'ready';
+    for (const key of ROWS) {
+      const value = Math.max(rowState[key] ?? 0, Math.min(1, Number(root.dataset[key]) || 0));
+      if (value === rowState[key] || !rows[key]) continue;
+      rowState[key] = value;
+      const status = rows[key].querySelector('.boot-row-status');
+      const bar = rows[key].querySelector('.boot-row-bar');
+      rows[key].dataset.state = value >= 1 ? 'done' : value > 0 ? 'active' : 'queued';
+      if (status) status.textContent = value >= 1 ? (key === 'gpu' ? 'WARM' : 'LOADED') : value > 0 ? `${Math.floor(value * 100)}%` : 'QUEUED';
+      if (bar) bar.style.transform = `scaleX(${value})`;
+    }
+  }
+
+  function cleanup() {
+    cancelAnimationFrame(raf);
+    timers.forEach(clearTimeout);
+    window.removeEventListener('portfolio:boot', readProgress);
+    window.removeEventListener('load', markPageLoaded);
+    window.removeEventListener('wheel', lockScroll);
+    window.removeEventListener('touchmove', lockScroll);
+    window.removeEventListener('keydown', lockKeys);
+    panel.removeEventListener('transitionend', onTransitionEnd);
   }
 
   function finishReveal() {
     if (disposed) return;
     disposed = true;
-    cancelAnimationFrame(raf);
-    clearTimeout(revealTimer);
+    cleanup();
     root.hidden = true;
     root.dataset.revealed = 'true';
     root.setAttribute('aria-busy', 'false');
-    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
     document.documentElement.classList.remove('portfolio-booting');
-    window.removeEventListener('resize', resize);
-    window.removeEventListener('portfolio:boot', readProgress);
-    window.removeEventListener('load', markPageLoaded);
-    window.removeEventListener('wheel', lockWheel);
-    window.removeEventListener('touchmove', lockWheel);
-    window.removeEventListener('keydown', lockKeys);
-    root.removeEventListener('transitionend', onTransitionEnd);
-    window.dispatchEvent(new Event('portfolio:revealed'));
-    canvas.width = 1;
-    canvas.height = 1;
-    streakLayer.replaceChildren();
+    drift.forEach(animation => animation.cancel());
     counter.dispose();
+    window.dispatchEvent(new Event('portfolio:revealed'));
   }
 
   function onTransitionEnd(event) {
-    if (event.target.id === 'boot-curtain' && event.propertyName === 'transform') finishReveal();
+    if (event.target === panel && event.propertyName === 'transform') finishReveal();
+  }
+
+  function later(callback, delay) { timers.push(window.setTimeout(callback, delay)); }
+
+  function launch() {
+    phase = 'launch';
+    root.dataset.presentation = 'launch';
+    announcement.textContent = 'Ready. Your journey begins.';
+    drift.forEach(animation => { animation.playbackRate = 6; });
+    later(reveal, reducedMotion ? 0 : LAUNCH_MS);
   }
 
   function reveal() {
-    revealing = true;
-    root.dataset.presentation = 'revealing';
-    announcement.textContent = 'Ready. Your journey begins.';
+    phase = 'revealing';
     window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
-    root.addEventListener('transitionend', onTransitionEnd);
+    root.dataset.presentation = 'revealing';
+    // The hero entrance starts as the panel lifts, so it plays in view.
+    window.dispatchEvent(new Event('portfolio:revealing'));
+    panel.addEventListener('transitionend', onTransitionEnd);
     // Fallback for background tabs or browsers that omit transitionend.
-    revealTimer = window.setTimeout(finishReveal, (reducedMotion ? 180 : REVEAL_MS) + 150);
+    later(finishReveal, (reducedMotion ? 200 : REVEAL_MS) + 200);
+  }
+
+  function render(progress, now) {
+    // The rocket climbs its own height less than the track (container units).
+    rocket.style.transform = `translate3d(-50%, calc(${(-progress).toFixed(4)} * (100cqh - 100%)), 0)`;
+    trail.style.transform = `scaleY(${progress.toFixed(4)})`;
+    altitude.textContent = `${formatKm(progress * MOON_DISTANCE_KM)} KM`;
+    clock.textContent = formatClock(now - started);
   }
 
   function frame(now) {
@@ -150,52 +148,52 @@ export function initBootLoader() {
     const delta = Math.min(.05, Math.max(0, (now - lastFrame) / 1000));
     lastFrame = now;
     if (!document.hidden) visibleTime += delta * 1000;
-    if (!failed && !revealing) {
+    if (!failed && phase === 'loading') {
       const allReady = ready && pageLoaded && fontsLoaded;
-      // Time caps the display rate; it never creates asset readiness.
+      // Time only limits the display rate; it never creates readiness.
       const timeCap = Math.min(1, visibleTime / MIN_VISIBLE_MS);
       const target = Math.min(allReady ? 1 : actual, timeCap);
-      const step = Math.min(.28 * delta, Math.max(0, target - displayed) * (1 - Math.exp(-delta * 5)));
-      displayed += step;
-      if (allReady && timeCap === 1 && displayed > .999) displayed = 1;
+      const gap = Math.max(0, target - displayed);
+      // Ease toward real progress, with a minimum pace so the last few
+      // percent never crawl, and a ceiling so big jumps still read as motion.
+      const rate = allReady ? 10 : 5;
+      displayed += Math.min(gap, Math.max(gap * (1 - Math.exp(-delta * rate)), .4 * delta), 1.6 * delta);
+      if (allReady && gap < .005 && timeCap === 1) displayed = 1;
       const integer = displayed === 1 ? 100 : Math.min(99, Math.floor(displayed * 100));
-      if (integer > lastInteger && now - lastNumberAt >= DIGIT_INTERVAL) {
-        // Never skip a carry or interrupt the previous digit's roll.
-        rollNumber(lastInteger + 1);
-        lastNumberAt = now;
+      if (integer !== shown && (now - lastSwapAt >= SWAP_INTERVAL || integer === 100)) {
+        shown = integer;
+        lastSwapAt = now;
+        counter.set(integer);
+        progressbar.setAttribute('aria-valuenow', String(integer));
+        root.dataset.displayProgress = String(integer);
       }
-      const barTarget = Math.min(displayed, lastInteger / 100);
-      barProgress += (barTarget - barProgress) * (1 - Math.exp(-delta * 25));
-      if (lastInteger === 100 && barProgress > .999) barProgress = 1;
-      const visualProgress = barProgress;
-      const rocketX = 20 + visualProgress * 890;
-      fill.setAttribute('width', String(visualProgress === 1 ? 1000 : visualProgress * 935));
-      rocket.setAttribute('transform', `translate(${rocketX.toFixed(2)} 70)`);
-      exhaust.setAttribute('transform', `translate(${rocketX.toFixed(2)} 0)`);
-      root.dataset.displayProgress = String(lastInteger);
-      if (!allReady) holdStarted = null;
-      if (allReady && lastInteger === 100 && now - lastNumberAt >= DIGIT_DURATION) {
+      drift.forEach(animation => { animation.playbackRate = 1 + displayed * 2.5; });
+      if (!allReady) {
+        holdStarted = null;
+        if (root.dataset.presentation === 'complete') root.dataset.presentation = 'loading';
+      }
+      if (allReady && shown === 100) {
         if (holdStarted === null) {
           holdStarted = visibleTime;
           root.dataset.presentation = 'complete';
         }
-        if (visibleTime - holdStarted >= COMPLETION_HOLD_MS) reveal();
+        if (visibleTime - holdStarted >= COMPLETION_HOLD_MS) launch();
       }
     }
-    if (!disposed) raf = requestAnimationFrame(frame);
+    render(phase === 'loading' ? displayed : 1, now);
+    raf = requestAnimationFrame(frame);
   }
 
-  function lockWheel(event) { event.preventDefault(); }
+  function lockScroll(event) { if (phase === 'loading' || phase === 'launch') event.preventDefault(); }
   function lockKeys(event) {
+    if (phase !== 'loading' && phase !== 'launch') return;
     if (['ArrowDown', 'ArrowUp', 'PageDown', 'PageUp', 'Home', 'End', ' '].includes(event.key) && event.target.tagName !== 'BUTTON') event.preventDefault();
   }
-  document.getElementById('boot-retry').addEventListener('click', () => window.location.reload());
-  window.addEventListener('wheel', lockWheel, { passive: false });
-  window.addEventListener('touchmove', lockWheel, { passive: false });
+  $('boot-retry').addEventListener('click', () => window.location.reload());
+  window.addEventListener('wheel', lockScroll, { passive: false });
+  window.addEventListener('touchmove', lockScroll, { passive: false });
   window.addEventListener('keydown', lockKeys);
-  window.addEventListener('resize', resize);
   window.addEventListener('portfolio:boot', readProgress);
-  resize();
   readProgress();
   raf = requestAnimationFrame(frame);
 }

@@ -139,7 +139,6 @@ function PlanetGLB({ position, size, color, modelPath, project, labelsVisible, o
     <group position={position}>
       <group ref={groupRef} onClick={labelsVisible ? event => { event.stopPropagation(); onSelect(project); } : undefined}>
         <primitive object={scaled} />
-        <pointLight color={color} intensity={0.7} distance={size * 10} />
       </group>
       {labelsVisible && <ProjectLabel project={project} size={size} onSelect={onSelect} />}
     </group>

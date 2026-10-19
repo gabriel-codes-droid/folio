@@ -7,8 +7,8 @@ export const SCENE_ASSETS = [
   },
   {
     "url": "/models/bot_mecha_warrior.glb",
-    "bytes": 13690580,
-    "version": "55ae483d67bd28c7"
+    "bytes": 9651808,
+    "version": "ed80080d3d4d278a"
   },
   {
     "url": "/models/flying.fbx",
@@ -27,8 +27,8 @@ export const SCENE_ASSETS = [
   },
   {
     "url": "/models/lava_planet.glb",
-    "bytes": 4363444,
-    "version": "85e3d27bc1e3c599"
+    "bytes": 672940,
+    "version": "ea0675848401edb7"
   },
   {
     "url": "/models/little_planet_earth.glb",
@@ -37,8 +37,8 @@ export const SCENE_ASSETS = [
   },
   {
     "url": "/models/moon.glb",
-    "bytes": 9682056,
-    "version": "00a3600c0b6fdf08"
+    "bytes": 3809756,
+    "version": "193531cf8739838d"
   },
   {
     "url": "/models/night-sky.hdr",
@@ -47,8 +47,8 @@ export const SCENE_ASSETS = [
   },
   {
     "url": "/models/planet_earth.glb",
-    "bytes": 4997348,
-    "version": "74725372a2404df1"
+    "bytes": 2276096,
+    "version": "62ab9e94e631fe92"
   },
   {
     "url": "/models/sitting.fbx",

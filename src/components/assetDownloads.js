@@ -134,7 +134,9 @@ export function createAssetDownloads({
       const now = Date.now();
       if (!force && now - lastReport < progressIntervalMs) return;
       lastReport = now;
-      onProgress?.(total ? assets.reduce((sum, asset) => sum + (entries.get(assetKey(asset))?.progress ?? 0), 0) / total : 1);
+      // The second argument lets callers group bytes (e.g. guide vs planets).
+      const received = Object.fromEntries(assets.map(asset => [asset.url, entries.get(assetKey(asset))?.progress ?? 0]));
+      onProgress?.(total ? Object.values(received).reduce((sum, bytes) => sum + bytes, 0) / total : 1, received);
     };
     let next = 0;
     let failure;

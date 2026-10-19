@@ -3,6 +3,8 @@ import { Cache } from 'three';
 import { createAssetDownloads } from './assetDownloads';
 import { STAGE_ASSETS, STAGE_ORDER } from './sceneStages';
 import { JOURNEY_SCROLL_HEIGHT } from './sceneConstants';
+import { reportBoot } from './SceneReady';
+import { bootProgress, groupBytes } from './bootProgress';
 
 const imports = {
   opening: () => import('./SpaceCanvas'),
@@ -15,7 +17,7 @@ function prepareStage(stage, onProgress) {
   if (!job.promise) {
     Cache.enabled = true;
     job.promise = job.downloads.prepare(STAGE_ASSETS[stage], {
-      concurrency: 3,
+      concurrency: 4,
       onProgress,
       onAsset: (asset, buffer) => Cache.add(`file:${asset.url}`, buffer),
     }).then(imports[stage]).catch(error => { job.promise = null; throw error; });
@@ -23,47 +25,53 @@ function prepareStage(stage, onProgress) {
   return job.promise;
 }
 
+// Every stage downloads at once and the boot curtain stays down until the
+// guide, the moon and all four planets are parsed and warmed on the GPU.
+// Nothing streams in after the page opens, so the journey never stalls.
 export default function SpaceExperience() {
   const [components, setComponents] = useState({});
   const [readyStages, setReadyStages] = useState({});
-  const [stage, setStage] = useState('opening');
-  const [status, setStatus] = useState({ progress: 0, error: '' });
+  const [received, setReceived] = useState({});
+  const [errors, setErrors] = useState({});
   const [attempt, setAttempt] = useState(0);
   useEffect(() => {
-    if (!stage) return;
     let active = true;
-    setStatus({ progress: 0, error: '' });
-    prepareStage(stage, progress => { if (active) setStatus({ progress, error: '' }); })
-      .then(module => { if (active) setComponents(previous => ({ ...previous, [stage]: module.default })); })
-      .catch(error => {
-        console.error(`${stage} preparation failed`, error);
-        if (active) setStatus(previous => ({ ...previous, error: 'This stage could not load. Please retry.' }));
-      });
+    for (const stage of STAGE_ORDER) {
+      prepareStage(stage, (_, bytes) => { if (active) setReceived(previous => ({ ...previous, ...bytes })); })
+        .then(module => { if (active) setComponents(previous => ({ ...previous, [stage]: module.default })); })
+        .catch(error => {
+          console.error(`${stage} preparation failed`, error);
+          if (active) setErrors(previous => ({ ...previous, [stage]: 'This stage could not load. Please retry.' }));
+        });
+    }
     return () => { active = false; };
-  }, [stage, attempt]);
+  }, [attempt]);
+
+  useEffect(() => {
+    const failure = Object.values(errors)[0];
+    if (failure) { reportBoot('error', 0, failure); return; }
+    const groups = groupBytes(received);
+    const { stage, progress } = bootProgress(groups, readyStages);
+    reportBoot(stage, progress, '', {
+      guide: groups.guide, moon: groups.moon, planets: groups.planets,
+      gpu: (readyStages.opening ? 0.5 : 0) + (readyStages.moon ? 0.5 : 0),
+    });
+  }, [received, readyStages, errors]);
 
   const onPrepared = useCallback(completed => {
     performance.mark(`space:${completed}:ready`);
     jobs.get(completed)?.downloads.clear();
     for (const asset of STAGE_ASSETS[completed]) Cache.remove(`file:${asset.url}`);
-    setReadyStages(previous => ({ ...previous, [completed]: Math.round(performance.now()) }));
-    setStage(current => current === completed ? STAGE_ORDER[STAGE_ORDER.indexOf(completed) + 1] : current);
+    setReadyStages(previous => previous[completed] ? previous : ({ ...previous, [completed]: Math.round(performance.now()) }));
   }, []);
-  const retry = () => setAttempt(value => value + 1);
+  const retry = () => { setErrors({}); setAttempt(value => value + 1); };
+  const moonStatus = { progress: groupBytes(received).moon, error: errors.moon || '' };
   const Scene = components.opening;
-  if (Scene) return <Scene initialProgress={0.75} onStagePrepared={onPrepared}
-    stages={components} readyStages={readyStages} stageStatus={status} onRetry={retry} />;
+  if (Scene) return <Scene onStagePrepared={onPrepared}
+    stages={components} readyStages={readyStages} stageStatus={moonStatus} onRetry={retry} />;
   return (
     <section className="space-region" id="space-experience" aria-label="Interactive project journey">
-      <div className="space-stage">
-        <div className="space-status" role="status">
-          {status.error || 'PREPARING YOUR EXPLORATION'}
-          <progress value={status.progress * 0.75} max="1" aria-label="Preparing the opening scene" />
-          <span>{Math.floor(status.progress * 75)}%</span>
-          <a href="#contact">Get in touch while space prepares ↗</a>
-          {status.error && <button onClick={retry}>Retry experience</button>}
-        </div>
-      </div>
+      <div className="space-stage" />
       <div style={{ height: JOURNEY_SCROLL_HEIGHT }} />
     </section>
   );
