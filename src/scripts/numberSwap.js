@@ -1,9 +1,10 @@
 export const SWAP_DURATION = 240;
 export const SWAP_INTERVAL = 110;
 
-// The whole number is replaced: the new value rises in from below while the
-// previous one leaves upward. Only one outgoing value exists at a time, so
-// rapid jumps (e.g. 37 -> 52) never pile up stale layers.
+// The whole number is replaced: the new value rolls in from below while the
+// previous one rolls fully out above the clipped box, so they never overlap.
+// Only one outgoing value exists at a time, so rapid jumps (e.g. 37 -> 52)
+// never pile up stale layers.
 export function createNumberSwap(container, reducedMotion = false) {
   container.replaceChildren();
   const sizer = document.createElement('span');
@@ -33,12 +34,12 @@ export function createNumberSwap(container, reducedMotion = false) {
       if (reducedMotion || !current.animate) { previous.remove(); return; }
       outgoing = previous;
       current.animate([
-        { transform: 'translate3d(0, 62%, 0)', opacity: 0 },
-        { transform: 'translate3d(0, 0, 0)', opacity: 1 },
+        { transform: 'translate3d(0, 105%, 0)' },
+        { transform: 'translate3d(0, 0, 0)' },
       ], { duration: SWAP_DURATION, easing });
       const leave = previous.animate([
-        { transform: 'translate3d(0, 0, 0)', opacity: 1 },
-        { transform: 'translate3d(0, -62%, 0)', opacity: 0 },
+        { transform: 'translate3d(0, 0, 0)' },
+        { transform: 'translate3d(0, -105%, 0)' },
       ], { duration: SWAP_DURATION, easing, fill: 'forwards' });
       leave.onfinish = () => {
         previous.remove();

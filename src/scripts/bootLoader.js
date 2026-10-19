@@ -81,8 +81,13 @@ export function initBootLoader() {
       const status = rows[key].querySelector('.boot-row-status');
       const bar = rows[key].querySelector('.boot-row-bar');
       rows[key].dataset.state = value >= 1 ? 'done' : value > 0 ? 'active' : 'queued';
-      if (status) status.textContent = value >= 1 ? (key === 'gpu' ? 'WARM' : 'LOADED') : value > 0 ? `${Math.floor(value * 100)}%` : 'QUEUED';
+      if (status) status.textContent = value >= 1 ? (key === 'gpu' ? 'READY' : 'LOADED') : value > 0 ? `${Math.floor(value * 100)}%` : 'QUEUED';
       if (bar) bar.style.transform = `scaleX(${value})`;
+    }
+    // Shaders compile as one step after the guide arrives; say so.
+    if (rows.gpu && !rowState.gpu && rowState.guide >= 1 && rows.gpu.dataset.state === 'queued') {
+      rows.gpu.dataset.state = 'active';
+      rows.gpu.querySelector('.boot-row-status').textContent = 'COMPILING';
     }
   }
 
@@ -136,9 +141,9 @@ export function initBootLoader() {
   }
 
   function render(progress, now) {
-    // The rocket climbs its own height less than the track (container units).
-    rocket.style.transform = `translate3d(-50%, calc(${(-progress).toFixed(4)} * (100cqh - 100%)), 0)`;
-    trail.style.transform = `scaleY(${progress.toFixed(4)})`;
+    // The rocket crosses the track less its own length (container units).
+    rocket.style.transform = `translate3d(calc(${progress.toFixed(4)} * (100cqw - 100%)), 0, 0)`;
+    trail.style.transform = `scaleX(${progress.toFixed(4)})`;
     altitude.textContent = `${formatKm(progress * MOON_DISTANCE_KM)} KM`;
     clock.textContent = formatClock(now - started);
   }

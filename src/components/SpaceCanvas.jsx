@@ -8,8 +8,7 @@ import { advanceProgress, availableProgress } from './sceneStages';
 import TacticalAstronaut from './TacticalAstronaut';
 import { presentationNearDescription } from './presentation';
 import SceneReady, { AssetProgress, reportBoot } from './SceneReady';
-import { PROJECTS } from '../data/projects';
-import { MOON_CENTER, MOON_RADIUS, PLANET_ROW_SPACING, PLANET_ROW_Y, PLANET_ROW_Z, GUIDE_CAMERA_POSITION, GUIDE_CAMERA_LOOK,
+import { MOON_CENTER, MOON_RADIUS, GUIDE_CAMERA_POSITION, GUIDE_CAMERA_LOOK,
   GALLERY_CAMERA_POSITION, GALLERY_CAMERA_LOOK, JOURNEY_SCROLL_HEIGHT } from './sceneConstants';
 
 class SceneErrorBoundary extends Component {
@@ -205,11 +204,8 @@ export default function SpaceCanvas({ initialProgress = 0, onStagePrepared, stag
           <directionalLight position={[10, 10, 5]} intensity={1} color="#e2e8f0" />
           <pointLight position={[-10, -5, -10]} intensity={0.6} color="#3b82f6" distance={30} />
           <pointLight position={[10, 5, 10]} intensity={0.5} color="#8b5cf6" distance={25} />
-          {/* Planet glows live here, always mounted, so the light count never
-              changes when space is entered (that would recompile every shader). */}
-          {PROJECTS.map((project, i) => <pointLight key={project.name} color={project.color}
-            intensity={MoonScene && inSpace ? 0.7 : 0} distance={project.size * 10}
-            position={[MOON_CENTER[0] + (i - (PROJECTS.length - 1) / 2) * PLANET_ROW_SPACING, PLANET_ROW_Y, PLANET_ROW_Z]} />)}
+          {/* Keep the light count fixed (it is baked into every shader) and
+              small: each point light makes every shader slower to compile. */}
           <Environment files="/models/night-sky.hdr" background={false} />
           <GuideController progressRef={actual} phase={phase} viewRef={viewRef} />
           <SceneReady onReady={handleReady} />

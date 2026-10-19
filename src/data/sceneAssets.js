@@ -7,8 +7,8 @@ export const SCENE_ASSETS = [
   },
   {
     "url": "/models/bot_mecha_warrior.glb",
-    "bytes": 9651808,
-    "version": "ed80080d3d4d278a"
+    "bytes": 6062428,
+    "version": "2d8dbc3c14948757"
   },
   {
     "url": "/models/flying.fbx",
@@ -42,8 +42,8 @@ export const SCENE_ASSETS = [
   },
   {
     "url": "/models/night-sky.hdr",
-    "bytes": 2115634,
-    "version": "23f067dac9195836"
+    "bytes": 524337,
+    "version": "375a25d0b6cdba9c"
   },
   {
     "url": "/models/planet_earth.glb",
