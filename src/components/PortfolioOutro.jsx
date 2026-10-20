@@ -185,7 +185,7 @@ export default function PortfolioOutro() {
             </button>
           </form>
           {composeState === 'sent' && <p className="compose-feedback is-success" role="status">Message sent. Thanks for reaching out.</p>}
-          {composeState === 'error' && <p className="compose-feedback is-error" role="alert">The message could not be sent right now. Please try again in a moment.</p>}
+          {composeState === 'error' && <p className="compose-feedback is-error" role="alert">The message could not be sent right now. Please try again, or email me directly at <a href="mailto:nmandrakegabriel@gmail.com">nmandrakegabriel@gmail.com</a>.</p>}
         </div>
       </div>}
     </section>

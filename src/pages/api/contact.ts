@@ -38,6 +38,9 @@ export const POST: APIRoute = async ({ request }) => {
 
   const apiKey = getSecret('RESEND_API_KEY');
   if (!apiKey) {
+    // Shows in Vercel's function logs: the key must be set in the project's
+    // Environment Variables (the local .env is never deployed).
+    console.error('Contact form: RESEND_API_KEY is not set for this deployment.');
     return Response.json({ error: 'The contact service is not configured yet.' }, { status: 503 });
   }
 

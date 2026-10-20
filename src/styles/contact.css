@@ -447,6 +447,7 @@
 
 .compose-feedback.is-success { color: #b9f2d0; }
 .compose-feedback.is-error { color: #ffd0c8; }
+.editorial .compose-feedback a { color: #fff; text-decoration: underline; text-underline-offset: 3px; }
 
 .editorial .contact-section a:focus-visible,
 .editorial .footer a:focus-visible {
