@@ -3,6 +3,10 @@
 @media(max-width:600px){.stage-buffer{font-size:10px}}
 .guide-canvas-shell{position:fixed;inset:0;z-index:3;pointer-events:none;transition:opacity .9s ease}
 .guide-canvas-shell.is-gallery{pointer-events:auto}
+/* R3F puts pointer-events:auto inline on its wrapper and canvas, which made the
+   fixed full-screen layer swallow clicks on every link beneath it. Only the
+   planet gallery should receive pointer input. */
+.guide-canvas-shell:not(.is-gallery) *{pointer-events:none!important}
 .space-stage{background:#010103 url('/images/stars-clean.png') center/cover no-repeat}
 .journey-ui{position:fixed;right:28px;bottom:26px;z-index:8;display:flex;flex-direction:column;align-items:flex-end;gap:12px;max-width:calc(100% - 40px)}
 .journey-ui>p,.journey-ui>button{margin:0;padding:11px 15px;border:1px solid #c2e5f12b;border-radius:4px;background:#050b12c9;color:#d0dce3;font:11px var(--font-mono);backdrop-filter:blur(8px)}

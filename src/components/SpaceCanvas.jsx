@@ -189,6 +189,7 @@ export default function SpaceCanvas({ initialProgress = 0, onStagePrepared, stag
         {inSpace && !ready && <div className="space-status" role="status">{preparation.error || 'PREPARING YOUR EXPLORATION'}
           <progress value={preparation.progress} max="1" /><span>{Math.floor(preparation.progress * 100)}%</span>
           {preparation.error && <button onClick={() => window.location.reload()}>Retry experience</button>}
+          <button type="button" data-open-projects aria-haspopup="dialog">Browse the project list instead →</button>
         </div>}
       </div>
       <div style={{ height: JOURNEY_SCROLL_HEIGHT }} />
@@ -229,6 +230,7 @@ export default function SpaceCanvas({ initialProgress = 0, onStagePrepared, stag
       {buffering && <div className="stage-buffer" role="status">
         <span>{stageError ? 'Please reload the experience.' : stageStatus.error || `Preparing your destination… ${Math.floor(stageStatus.progress * 100)}%`}</span>
         {stageStatus.error && <button onClick={onRetry}>Retry</button>}
+        <button type="button" data-open-projects aria-haspopup="dialog">Project list →</button>
       </div>}
     </div>}
     {selectedProject && <div className="project-dialog" onClick={() => setSelectedProject(null)}>

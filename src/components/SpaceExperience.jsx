@@ -57,6 +57,7 @@ export default function SpaceExperience() {
           PREPARING THE SPACE JOURNEY
           <progress value={groups.guide} max="1" />
           <span>{Math.floor(groups.guide * 100)}%</span>
+          <button type="button" data-open-projects aria-haspopup="dialog">Browse the project list instead →</button>
         </div>
       </div>
       <div style={{ height: JOURNEY_SCROLL_HEIGHT }} />

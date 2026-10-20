@@ -1,0 +1,84 @@
+---
+import { PROJECTS } from '../data/projects.js';
+// The planets are the showcase, but the work must never depend on 3D: any
+// [data-open-projects] button opens this plain list, with or without WebGL.
+const stack = subtitle => subtitle.split(' · ').map(tech => ({ Node: 'Node.js', Tailwind: 'Tailwind CSS' })[tech] || tech);
+---
+<dialog id="project-index" class="project-index" aria-labelledby="project-index-title">
+  <div class="project-index-head">
+    <div>
+      <p class="project-index-kicker">SELECTED WORK / {String(PROJECTS.length).padStart(2, '0')}</p>
+      <h2 id="project-index-title">ALL PROJECTS</h2>
+    </div>
+    <button type="button" class="project-index-close" data-close-projects aria-label="Close project list">×</button>
+  </div>
+  <ol class="project-index-list">
+    {PROJECTS.map(project => (
+      <li style={`--project-color: ${project.color}`}>
+        <span class="project-index-number">{project.number}</span>
+        <div class="project-index-body">
+          <h3>{project.title}</h3>
+          <p class="project-index-stack">{stack(project.subtitle).join(' · ')}</p>
+          <p class="project-index-description">{project.description}</p>
+          <a href={project.url} target="_blank" rel="noopener noreferrer">VIEW LIVE PROJECT <span aria-hidden="true">↗</span><span class="sr-only"> (opens in a new tab)</span></a>
+        </div>
+      </li>
+    ))}
+  </ol>
+</dialog>
+
+<script>
+  const dialog = document.getElementById('project-index') as HTMLDialogElement | null;
+  // Delegated, so buttons rendered later by the React scene also work.
+  document.addEventListener('click', event => {
+    const target = event.target as Element | null;
+    if (target?.closest('[data-open-projects]')) dialog?.showModal();
+    else if (target?.closest('[data-close-projects]')) dialog?.close();
+  });
+  // Clicking the dimmed backdrop (outside the panel) closes it.
+  dialog?.addEventListener('click', event => {
+    const box = dialog.getBoundingClientRect();
+    const inside = event.clientX >= box.left && event.clientX <= box.right && event.clientY >= box.top && event.clientY <= box.bottom;
+    if (!inside) dialog.close();
+  });
+</script>
+
+<style is:global>
+  .project-index {
+    width: min(680px, calc(100% - 32px)); max-height: min(86vh, 900px); margin: auto; padding: 0;
+    border: 1px solid rgb(255 255 255 / 14%); border-radius: 16px; color: #f3f3f0;
+    background:
+      linear-gradient(155deg, rgb(255 255 255 / 8%) 0%, rgb(255 255 255 / 2%) 38%, rgb(255 255 255 / 0%) 60%),
+      rgb(12 17 23 / 94%);
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 14%), 0 40px 90px -30px rgb(0 0 0 / 90%);
+    font-family: var(--font-body);
+  }
+  .project-index::backdrop { background: rgb(2 4 6 / 70%); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+  .project-index[open] { animation: project-index-in .35s cubic-bezier(.22, 1, .36, 1); }
+  @keyframes project-index-in { from { opacity: 0; transform: translateY(14px) scale(.985); } }
+  .project-index-head { position: sticky; top: 0; z-index: 1; display: flex; justify-content: space-between; align-items: flex-start;
+    padding: 28px 28px 22px; border-bottom: 1px solid rgb(180 228 255 / 15%); background: rgb(12 17 23 / 96%); }
+  .project-index-kicker { margin: 0 0 10px; font: 10px var(--font-mono); letter-spacing: .12em; color: #a4d5ed; }
+  .project-index h2 { margin: 0; font: 500 clamp(28px, 4vw, 40px)/1 'PP Neue Montreal', 'Neue Montreal', Arial, sans-serif; letter-spacing: -.04em; }
+  .project-index-close { width: 40px; height: 40px; border: 1px solid rgb(255 255 255 / 25%); border-radius: 50%;
+    background: transparent; color: #fff; font-size: 20px; line-height: 1; cursor: pointer; }
+  .project-index-close:focus-visible, .project-index a:focus-visible { outline: 2px solid #b8e7ff; outline-offset: 4px; }
+  .project-index-list { list-style: none; margin: 0; padding: 4px 28px 12px; }
+  .project-index-list li { display: grid; grid-template-columns: 44px 1fr; gap: 8px; padding: 24px 0; border-bottom: 1px solid rgb(255 255 255 / 8%); }
+  .project-index-list li:last-child { border-bottom: 0; }
+  .project-index-number { font: 11px var(--font-mono); letter-spacing: .1em; color: var(--project-color); padding-top: 6px; }
+  .project-index h3 { margin: 0; font: 500 24px/1.1 'PP Neue Montreal', 'Neue Montreal', Arial, sans-serif; letter-spacing: -.03em; }
+  .project-index-stack { margin: 8px 0 0; font: 11px var(--font-mono); letter-spacing: .06em; color: #8fa7b2; }
+  .project-index-description { margin: 12px 0 0; font-size: 14px; line-height: 1.65; color: #b8c2cc; }
+  .project-index-list a { display: inline-flex; gap: 10px; margin-top: 14px; padding-bottom: 6px; border-bottom: 1px solid rgb(255 255 255 / 30%);
+    font: 11px var(--font-mono); letter-spacing: .08em; color: #e4f6ff; text-decoration: none; }
+  .project-index-list a:hover { border-color: var(--project-color); }
+  .project-index .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .text-button { appearance: none; background: none; border: 0; padding: 0 0 12px; cursor: pointer; color: inherit; }
+  @media (max-width: 600px) {
+    .project-index-head { padding: 22px 20px 18px; }
+    .project-index-list { padding: 0 20px 8px; }
+    .project-index-list li { grid-template-columns: 34px 1fr; }
+  }
+  @media (prefers-reduced-motion: reduce) { .project-index[open] { animation: none; } }
+</style>

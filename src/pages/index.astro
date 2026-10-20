@@ -4,6 +4,7 @@ import Layout from '../layouts/Layout.astro';
 import PortfolioIntro from '../components/PortfolioIntro.astro';
 import PortfolioOutro from '../components/PortfolioOutro';
 import BootLoader from '../components/BootLoader.astro';
+import ProjectIndex from '../components/ProjectIndex.astro';
 import '../styles/editorial.css';
 import '../styles/editorial-refinements.css';
 import '../styles/scene-loading.css';
@@ -17,4 +18,5 @@ export const prerender = true;
   <PortfolioIntro />
   <SpaceCanvas client:only="react" />
   <PortfolioOutro client:load />
+  <ProjectIndex />
 </Layout>
