@@ -85,7 +85,7 @@ export default function PortfolioOutro() {
     <section className="contact-section wrap" id="contact" aria-labelledby="contact-heading">
       <p className="eyebrow">05 / LET’S TALK</p>
       <h2 id="contact-heading">LET’S BUILD<br/>SOMETHING.</h2>
-      <p className="contact-intro">Have a project in mind? Let’s talk about it.</p>
+      <p className="contact-intro">Want to give some feedback? Want to reach out? I’m all ears.</p>
       <button
         type="button"
         className="contact-email"

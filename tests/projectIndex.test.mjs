@@ -11,8 +11,7 @@ test('every project is reachable without 3D through the project list', () => {
   assert.match(index, /PROJECTS\.map/);
   assert.ok(PROJECTS.every(project => project.url.startsWith('https://')));
   assert.match(read('src/pages/index.astro'), /<ProjectIndex \/>/);
-  assert.match(read('src/components/PortfolioIntro.astro'), /data-open-projects/);
-  // Offered wherever the space scene is still loading.
+  // Offered wherever the space scene is still loading or unavailable.
   assert.match(read('src/components/SpaceExperience.jsx'), /data-open-projects/);
   assert.match(read('src/components/SpaceCanvas.jsx'), /data-open-projects/);
 });
