@@ -122,7 +122,6 @@ export default function PortfolioOutro() {
               '--card-z': `${-distance * 92}px`,
               '--card-rotate': `${offset * 7}deg`,
               '--card-scale': active ? '1' : '.9',
-              '--card-opacity': active ? '1' : '.54',
             };
             return <article key={profile.name} className={`contact-card${active ? ' is-active' : ''}`} style={style}>
               <button
