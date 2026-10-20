@@ -4,7 +4,7 @@ import { EffectComposer, Bloom } from '@react-three/postprocessing';
 import { Suspense, useRef, useState, useEffect, useCallback, Component } from 'react';
 import * as THREE from 'three';
 import { phaseForProgress, spaceJourneyProgress, sceneExitInset, shouldHoldSceneExit, sampleArrival, sampleJourney, smooth } from './journey';
-import { guideView } from './guidePath';
+import { guideView, followScroll, guideAt, sharedFollow } from './guidePath';
 import { advanceProgress, availableProgress } from './sceneStages';
 import TacticalAstronaut from './TacticalAstronaut';
 import SceneReady, { AssetProgress, reportBoot } from './SceneReady';
@@ -42,6 +42,7 @@ function GuideController({ progressRef, phase, viewRef }) {
   const departure = useRef(new THREE.Vector3());
   const lastProgress = useRef(-1);
   const guide = useRef([0.34, 0.80]);
+  const followed = useRef(0);
   const entered = useRef(false);
   const scratch = useMemoVectors();
   useFrame((state, delta) => {
@@ -51,12 +52,13 @@ function GuideController({ progressRef, phase, viewRef }) {
     // takes over exactly where its still (which follows the same path) is.
     if (!entered.current) {
       entered.current = true;
-      guide.current = [...view.guide];
+      followed.current = sharedFollow.scroll ?? view.scroll;
+      guide.current = guideAt(followed.current, view);
     }
     const presentation = view.presentation || { weight: 0, side: 1 };
     const presentationEase = 1 - Math.exp(-Math.min(delta, 0.05) * 3.5);
     const switchingSide = presentationRef.current.side !== presentation.side;
-    const settled = Math.hypot(guide.current[0] - view.guide[0], guide.current[1] - view.guide[1]) < 0.025;
+    const settled = Math.abs(followed.current - view.scroll) < window.innerHeight * 0.03;
     const targetPresentation = p === 0 && settled && !switchingSide ? presentation.weight : 0;
     presentationRef.current.weight += (targetPresentation - presentationRef.current.weight) * presentationEase;
     if (presentationRef.current.weight < 0.02) presentationRef.current.side = presentation.side;
@@ -73,8 +75,8 @@ function GuideController({ progressRef, phase, viewRef }) {
       camera.updateMatrixWorld();
     }
     if (p === 0) {
-      const speed = 1 - Math.exp(-Math.min(delta, 0.05) * 2.4);
-      guide.current = guide.current.map((value, axis) => value + (view.guide[axis] - value) * speed);
+      followed.current = followScroll(followed.current, view.scroll, delta);
+      guide.current = guideAt(followed.current, view);
       scratch.ray.set(guide.current[0] * 2 - 1, 1 - guide.current[1] * 2, 0.5)
         .unproject(camera).sub(camera.position).normalize();
       worldPosition.current.copy(camera.position).addScaledVector(scratch.ray, view.compact ? 9 : 7.5);

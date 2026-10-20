@@ -57,7 +57,7 @@ const nameLines = ['N.MANDRAKE', 'GABRIEL'];
 </div>
 <script>
   import { gsap } from 'gsap';
-  import { guideView } from './guidePath.js';
+  import { guideView, followScroll, guideAt, sharedFollow } from './guidePath.js';
   import { ScrollTrigger } from 'gsap/ScrollTrigger';
   gsap.registerPlugin(ScrollTrigger);
   // Keep the lines attached to the actual connector dots as cards arrive,
@@ -90,16 +90,25 @@ const nameLines = ['N.MANDRAKE', 'GABRIEL'];
   // The still guide accompanies the visitor along the live guide's path, then
   // hands over to the live 3D one once it is warmed.
   const poster = document.querySelector<HTMLElement>('.guide-poster');
+  // Same smoothing as the live guide: ease the followed scroll, then place it
+  // exactly on the path, so both travel the same curve down and back up.
   let posterFrame = 0;
-  const placePoster = () => {
+  let lastFrame = 0;
+  const placePoster = (now = performance.now()) => {
     posterFrame = 0;
     if (!poster || poster.classList.contains('is-live')) return;
+    const view = guideView();
+    const dt = lastFrame ? (now - lastFrame) / 1000 : 1 / 60;
+    sharedFollow.scroll = sharedFollow.scroll === null ? view.scroll : followScroll(sharedFollow.scroll, view.scroll, dt);
+    lastFrame = now;
+    const [x, y] = guideAt(sharedFollow.scroll, view);
     const space = document.getElementById('space-experience')?.getBoundingClientRect();
     poster.classList.toggle('is-away', !!space && space.top <= window.innerHeight * 0.85);
-    const { guide, presentation } = guideView();
-    poster.style.setProperty('--guide-x', `${guide[0] * document.documentElement.clientWidth}px`);
-    poster.style.setProperty('--guide-y', `${guide[1] * window.innerHeight}px`);
-    poster.classList.toggle('is-facing-left', presentation.side < 0 && presentation.weight > 0.5);
+    poster.style.setProperty('--guide-x', `${x * document.documentElement.clientWidth}px`);
+    poster.style.setProperty('--guide-y', `${y * window.innerHeight}px`);
+    poster.classList.toggle('is-facing-left', view.presentation.side < 0 && view.presentation.weight > 0.5);
+    if (Math.abs(view.scroll - sharedFollow.scroll) > 0.5) posterFrame = requestAnimationFrame(placePoster);
+    else lastFrame = 0;
   };
   const schedulePoster = () => { if (!posterFrame) posterFrame = requestAnimationFrame(placePoster); };
   const handOver = () => {

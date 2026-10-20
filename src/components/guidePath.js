@@ -18,5 +18,19 @@ export function guideView() {
   const compact = window.innerWidth < 700;
   const guide = sampleGuide(scroll, stops, compact);
   const descriptions = [...document.querySelectorAll('.hero-copy, .capability article')].map(element => element.getBoundingClientRect());
-  return { guide, compact, presentation: presentationNearDescription(guide, descriptions, window.innerWidth, height) };
+  return { guide, compact, stops, scroll, presentation: presentationNearDescription(guide, descriptions, window.innerWidth, height) };
 }
+
+// Smoothing is applied to the scroll position the guide follows, not to its
+// screen position: easing the position cut corners and lagged in opposite
+// directions going down and up, so the two paths differed. Easing the scroll
+// keeps the guide exactly on the path, merely a moment behind, both ways.
+const FOLLOW_RATE = 2.4;
+export function followScroll(current, target, delta) {
+  return current + (target - current) * (1 - Math.exp(-Math.min(Math.max(delta, 0), 0.05) * FOLLOW_RATE));
+}
+export const guideAt = (scroll, view) => sampleGuide(scroll, view.stops, view.compact);
+
+// The still guide records its followed scroll so the live guide can take
+// over from the exact same point on the path.
+export const sharedFollow = { scroll: null };
