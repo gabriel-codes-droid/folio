@@ -201,3 +201,15 @@ body.overflow-x-hidden { overflow-x: clip; }
 .tech-track span:hover{border-color:#ffffff40;color:#fff}
 .tech-marquee{position:relative}
 @media(max-width:600px){.tech-track>div{gap:14px;padding:24px 7px}.tech-track span{font-size:18px;padding:10px 20px 10px 10px;gap:12px}.tech-track img{width:32px;height:32px;padding:6px}}
+
+/* Still guide: pinned to the live guide's anchor (journey.js sampleGuide at
+   scroll 0) and scaled with viewport height like the 3D camera. */
+.guide-poster { position: absolute; z-index: 2; left: 34%; top: 80vh; top: 80dvh; height: 30.667vh; height: 30.667dvh;
+  translate: -36.23% -85.14%; pointer-events: none; transition: opacity .9s ease; animation: guide-hover 4.5s ease-in-out infinite; }
+.guide-poster img { display: block; width: auto; height: 100%; }
+.guide-poster.is-live { opacity: 0; animation-play-state: paused; }
+@keyframes guide-hover { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-1.2%); } }
+@media (max-width: 699px) {
+  .guide-poster { left: 22%; top: 72vh; top: 72dvh; height: 15.166vh; height: 15.166dvh; translate: -25.17% -63.42%; }
+}
+@media (prefers-reduced-motion: reduce) { .guide-poster { animation: none; } }

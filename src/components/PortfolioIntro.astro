@@ -9,6 +9,12 @@ const nameLines = ['N.MANDRAKE', 'GABRIEL'];
     <a class="wordmark monogram" href="#top" aria-label="N. Mandrake Gabriel — home">N.MG<span aria-hidden="true">.</span></a>
     <span class="nav-edition">PORTFOLIO / {new Date().getFullYear()}</span>
   </nav>
+  <!-- A still of the guide, rendered from the live scene, holds its exact spot
+       until the 3D version (several MB) is ready, then the two crossfade. -->
+  <picture class="guide-poster" aria-hidden="true">
+    <source media="(max-width: 699px)" srcset="/images/guide-poster-compact.webp" />
+    <img src="/images/guide-poster.webp" alt="" width="199" height="276" fetchpriority="high" decoding="async" />
+  </picture>
   <section class="hero wrap" id="about">
       <p class="eyebrow">01 / INTRODUCTION</p>
     <h1 class="discipline-title" aria-label="N. Mandrake Gabriel">
@@ -80,6 +86,15 @@ const nameLines = ['N.MANDRAKE', 'GABRIEL'];
     map.querySelectorAll('article').forEach(card => connectionResize.observe(card));
   }
   document.addEventListener('astro:before-swap', () => connectionResize.disconnect(), { once: true });
+  // Hand over from the still guide to the live 3D one once it is warmed.
+  const poster = document.querySelector<HTMLElement>('.guide-poster');
+  const handOver = () => {
+    if (document.getElementById('boot-hud')?.dataset.stage !== 'ready') return;
+    poster?.classList.add('is-live');
+    window.removeEventListener('portfolio:boot', handOver);
+  };
+  window.addEventListener('portfolio:boot', handOver);
+  handOver();
   const media = gsap.matchMedia();
   // Hover transforms belong to the inner article; entrance choreography
   // remains on the outer card, so the two animations never fight.
