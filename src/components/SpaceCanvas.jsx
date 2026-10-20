@@ -3,10 +3,10 @@ import { OrbitControls, Environment } from '@react-three/drei';
 import { EffectComposer, Bloom } from '@react-three/postprocessing';
 import { Suspense, useRef, useState, useEffect, useCallback, Component } from 'react';
 import * as THREE from 'three';
-import { phaseForProgress, spaceJourneyProgress, sceneExitInset, shouldHoldSceneExit, sampleArrival, sampleJourney, sampleGuide, smooth } from './journey';
+import { phaseForProgress, spaceJourneyProgress, sceneExitInset, shouldHoldSceneExit, sampleArrival, sampleJourney, smooth } from './journey';
+import { guideView } from './guidePath';
 import { advanceProgress, availableProgress } from './sceneStages';
 import TacticalAstronaut from './TacticalAstronaut';
-import { presentationNearDescription } from './presentation';
 import SceneReady, { AssetProgress, reportBoot } from './SceneReady';
 import { MOON_CENTER, MOON_RADIUS, GUIDE_CAMERA_POSITION, GUIDE_CAMERA_LOOK,
   GALLERY_CAMERA_POSITION, GALLERY_CAMERA_LOOK, JOURNEY_SCROLL_HEIGHT } from './sceneConstants';
@@ -47,12 +47,11 @@ function GuideController({ progressRef, phase, viewRef }) {
   useFrame((state, delta) => {
     const p = progressRef.current;
     const view = viewRef.current;
-    // Frames only start once the guide is warmed, so this is its arrival.
-    // At the top it replaces the still in place; if the visitor has already
-    // scrolled on, it flies in from the right edge so they notice it.
+    // Frames only start once the guide is warmed, so this is its arrival: it
+    // takes over exactly where its still (which follows the same path) is.
     if (!entered.current) {
       entered.current = true;
-      guide.current = window.scrollY > window.innerHeight * 0.6 ? [1.2, view.guide[1]] : [...view.guide];
+      guide.current = [...view.guide];
     }
     const presentation = view.presentation || { weight: 0, side: 1 };
     const presentationEase = 1 - Math.exp(-Math.min(delta, 0.05) * 3.5);
@@ -140,20 +139,7 @@ export default function SpaceCanvas({ initialProgress = 0, onStagePrepared, stag
         schedule();
         return;
       }
-      const services = document.getElementById('services')?.getBoundingClientRect();
-      const work = document.getElementById('work')?.getBoundingClientRect();
-      const hero = document.getElementById('about')?.getBoundingClientRect();
-      // Stay in the outer margin until hero copy has passed, then cross into
-      // the gap between cards. Leave that gap only after the last card passes.
-      const stops = [0, height * 0.25, (hero?.bottom || height) + scroll,
-        (services?.top || 0) + scroll + height * 0.7,
-        (services?.bottom || 0) + scroll, (work?.top || 0) + scroll + height * 0.4];
-      for (let i = 1; i < stops.length; i++) stops[i] = Math.max(stops[i], stops[i - 1] + 1);
-      const compact = window.innerWidth < 700;
-      const guide = sampleGuide(scroll, stops, compact);
-      const descriptions = [...document.querySelectorAll('.hero-copy, .capability article')].map(element => element.getBoundingClientRect());
-      viewRef.current = { guide, compact,
-        presentation: presentationNearDescription(guide, descriptions, window.innerWidth, height) };
+      viewRef.current = guideView();
       desired.current = spaceJourneyProgress(section.top, section.height, height);
       // Clip the fixed canvas at the section boundary as the following
       // editorial content enters. Update its style without frame rerenders.

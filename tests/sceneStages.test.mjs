@@ -24,7 +24,13 @@ test('fast scrolling holds the guide until its moon destination is ready', () =>
 test('readiness releases smoothly without teleporting, including background-tab deltas', () => {
   const ready = { moon: true };
   assert.ok(advanceProgress(0.079, 1, ready, 10) < 0.1);
-  assert.ok(advanceProgress(1, 0, ready, 1 / 60) > 0.99);
+  // Rewinding is faster than the descent but never a jump.
+  assert.ok(advanceProgress(1, 0, ready, 1 / 60) > 0.94);
+  let p = 1, seconds = 0;
+  while (p > 0 && seconds < 5) { const next = advanceProgress(p, 0, ready, 1 / 60); assert.ok(p - next <= 0.06); p = next; seconds += 1 / 60; }
+  assert.ok(seconds < 1.6, `full rewind took ${seconds.toFixed(2)}s`);
+  // The descent keeps its slow cinematic pace.
+  assert.ok(advanceProgress(0, 1, ready, 1 / 60) < 0.003);
   assert.equal(advanceProgress(0.4, 0.4, ready, 1 / 60), 0.4);
 });
 

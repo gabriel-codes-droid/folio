@@ -14,8 +14,14 @@ export function availableProgress(desired, ready) {
   return Math.min(Math.max(0, desired), ready.moon ? 1 : 0);
 }
 
+// The descent is deliberately slow and cinematic (the page holds its scroll
+// until landing). Scrolling back up is not held, so the rewind catches up with
+// the page quickly, yet continuously: the guide flies back along the same path
+// instead of lingering in its moon pose over the intro sections.
 export function advanceProgress(current, desired, ready, delta) {
   const target = availableProgress(desired, ready);
-  const step = Math.min(Math.max(delta, 0), 0.05) * 0.12;
-  return current + Math.max(-step, Math.min(step, target - current));
+  const dt = Math.min(Math.max(delta, 0), 0.05);
+  if (target >= current) return current + Math.min(dt * 0.12, target - current);
+  const rewind = dt * Math.max(0.6, (current - target) * 3);
+  return current - Math.min(rewind, current - target);
 }

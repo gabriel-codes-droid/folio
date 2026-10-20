@@ -9,8 +9,8 @@ const nameLines = ['N.MANDRAKE', 'GABRIEL'];
     <a class="wordmark monogram" href="#top" aria-label="N. Mandrake Gabriel — home">N.MG<span aria-hidden="true">.</span></a>
     <span class="nav-edition">PORTFOLIO / {new Date().getFullYear()}</span>
   </nav>
-  <!-- A still of the guide, rendered from the live scene, holds its exact spot
-       until the 3D version (several MB) is ready, then the two crossfade. -->
+  <!-- A still of the guide, rendered from the live scene, travels the same
+       path until the 3D version (several MB) is ready, then they crossfade. -->
   <picture class="guide-poster" aria-hidden="true">
     <source media="(max-width: 699px)" srcset="/images/guide-poster-compact.webp" />
     <img src="/images/guide-poster.webp" alt="" width="199" height="276" fetchpriority="high" decoding="async" />
@@ -58,6 +58,7 @@ const nameLines = ['N.MANDRAKE', 'GABRIEL'];
 </div>
 <script>
   import { gsap } from 'gsap';
+  import { guideView } from './guidePath.js';
   import { ScrollTrigger } from 'gsap/ScrollTrigger';
   gsap.registerPlugin(ScrollTrigger);
   // Keep the lines attached to the actual connector dots as cards arrive,
@@ -87,14 +88,32 @@ const nameLines = ['N.MANDRAKE', 'GABRIEL'];
     map.querySelectorAll('article').forEach(card => connectionResize.observe(card));
   }
   document.addEventListener('astro:before-swap', () => connectionResize.disconnect(), { once: true });
-  // Hand over from the still guide to the live 3D one once it is warmed.
+  // The still guide accompanies the visitor along the live guide's path, then
+  // hands over to the live 3D one once it is warmed.
   const poster = document.querySelector<HTMLElement>('.guide-poster');
+  let posterFrame = 0;
+  const placePoster = () => {
+    posterFrame = 0;
+    if (!poster || poster.classList.contains('is-live')) return;
+    const space = document.getElementById('space-experience')?.getBoundingClientRect();
+    poster.classList.toggle('is-away', !!space && space.top <= window.innerHeight * 0.85);
+    const { guide, presentation } = guideView();
+    poster.style.setProperty('--guide-x', `${guide[0] * document.documentElement.clientWidth}px`);
+    poster.style.setProperty('--guide-y', `${guide[1] * window.innerHeight}px`);
+    poster.classList.toggle('is-facing-left', presentation.side < 0 && presentation.weight > 0.5);
+  };
+  const schedulePoster = () => { if (!posterFrame) posterFrame = requestAnimationFrame(placePoster); };
   const handOver = () => {
     if (document.getElementById('boot-hud')?.dataset.stage !== 'ready') return;
     poster?.classList.add('is-live');
     window.removeEventListener('portfolio:boot', handOver);
+    window.removeEventListener('scroll', schedulePoster);
+    window.removeEventListener('resize', schedulePoster);
   };
+  window.addEventListener('scroll', schedulePoster, { passive: true });
+  window.addEventListener('resize', schedulePoster);
   window.addEventListener('portfolio:boot', handOver);
+  placePoster();
   handOver();
   const media = gsap.matchMedia();
   // Hover transforms belong to the inner article; entrance choreography
