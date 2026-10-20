@@ -42,10 +42,18 @@ function GuideController({ progressRef, phase, viewRef }) {
   const departure = useRef(new THREE.Vector3());
   const lastProgress = useRef(-1);
   const guide = useRef([0.34, 0.80]);
+  const entered = useRef(false);
   const scratch = useMemoVectors();
   useFrame((state, delta) => {
     const p = progressRef.current;
     const view = viewRef.current;
+    // Frames only start once the guide is warmed, so this is its arrival.
+    // At the top it replaces the still in place; if the visitor has already
+    // scrolled on, it flies in from the right edge so they notice it.
+    if (!entered.current) {
+      entered.current = true;
+      guide.current = window.scrollY > window.innerHeight * 0.6 ? [1.2, view.guide[1]] : [...view.guide];
+    }
     const presentation = view.presentation || { weight: 0, side: 1 };
     const presentationEase = 1 - Math.exp(-Math.min(delta, 0.05) * 3.5);
     const switchingSide = presentationRef.current.side !== presentation.side;
