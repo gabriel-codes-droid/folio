@@ -106,7 +106,6 @@ const nameLines = ['N.MANDRAKE', 'GABRIEL'];
     poster.classList.toggle('is-away', !!space && space.top <= window.innerHeight * 0.85);
     poster.style.setProperty('--guide-x', `${x * document.documentElement.clientWidth}px`);
     poster.style.setProperty('--guide-y', `${y * window.innerHeight}px`);
-    poster.classList.toggle('is-facing-left', view.presentation.side < 0 && view.presentation.weight > 0.5);
     if (Math.abs(view.scroll - sharedFollow.scroll) > 0.5) posterFrame = requestAnimationFrame(placePoster);
     else lastFrame = 0;
   };
