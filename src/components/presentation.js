@@ -9,13 +9,16 @@ export const PRESENTATION_CHAINS = {
   hand_r_041: 'middle1_r_043',
 };
 
-// One hand frames the description above, the other presents it below.
-// Mirrored in character space rather than reusing unlike local bone axes.
+// A "here it is" presenting gesture: both arms reach toward the description.
+// The far arm extends out at about shoulder height with a soft elbow (forearm
+// angled up-and-out, never vertical), the near arm rests by the body with its
+// forearm level. Mirrored in character space rather than reusing unlike local
+// bone axes.
 export function presentationDirection(name, side) {
   const raised = side > 0 ? name.includes('_l_') : name.includes('_r_');
-  if (name.startsWith('arm_')) return raised ? [side * 0.52, 0.16, 0.30] : [side * 0.28, -0.85, 0.20];
-  if (name.startsWith('forearm_')) return raised ? [side * 0.5, 0.8, 0.25] : [side * 0.8, 0.12, 0.55];
-  return [side * 0.8, raised ? 0.32 : 0.12, 0.25];
+  if (name.startsWith('arm_')) return raised ? [side * 0.88, 0.2, 0.3] : [side * 0.45, -0.72, 0.38];
+  if (name.startsWith('forearm_')) return raised ? [side * 0.82, 0.42, 0.25] : [side * 0.9, 0.12, 0.38];
+  return raised ? [side * 0.88, 0.3, 0.2] : [side * 0.9, 0.18, 0.25];
 }
 
 export function presentationNearDescription(guide, rectangles, width, height) {
