@@ -12,12 +12,16 @@ test('presenting points toward nearby copy, never through an occupied card', () 
 });
 
 test('gesture mirrors the raised and supporting arms correctly', () => {
-  // The raised forearm angles up and outward toward the description, never
-  // straight up (that read as an Egyptian pose).
-  for (const [name, side] of [['forearm_stretch_l_016', 1], ['forearm_stretch_r_038', -1]]) {
-    const [x, y] = presentationDirection(name, side);
-    assert.ok(y > 0.2 && Math.abs(x) > y);
+  // The raised forearm angles up and outward toward the description, between
+  // about 30 and 60 degrees: never straight up (that read as an Egyptian pose).
+  for (const [forearm, hand, side] of [['forearm_stretch_l_016', 'hand_l_019', 1], ['forearm_stretch_r_038', 'hand_r_041', -1]]) {
+    const [x, y] = presentationDirection(forearm, side);
+    const elevation = Math.atan2(y, Math.abs(x)) * 180 / Math.PI;
+    assert.ok(elevation > 30 && elevation < 60, `forearm elevation ${elevation.toFixed(0)}deg`);
     assert.equal(Math.sign(x), side);
+    // The hand tips back into an open palm instead of continuing the arm's
+    // line, which read as pointing.
+    assert.ok(presentationDirection(hand, side)[1] > y);
   }
   assert.deepEqual(presentationDirection('forearm_stretch_l_016', 1), presentationDirection('forearm_stretch_r_038', -1).map((value, axis) => axis === 0 ? -value : value));
 });

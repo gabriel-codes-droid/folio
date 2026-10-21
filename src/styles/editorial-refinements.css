@@ -206,16 +206,16 @@ body.overflow-x-hidden { overflow-x: clip; }
    the intro script in px, and scaled with viewport height like the 3D camera.
    Its feet anchor matches the 3D model's origin. Never mirrored: a flat
    image flipping sides reads as a card flip; only the live 3D guide turns. */
-.guide-poster { position: fixed; left: 0; top: 0; z-index: 5; height: 29.333vh; height: 29.333dvh;
+.guide-poster { position: fixed; left: 0; top: 0; z-index: 5; height: 31.444vh; height: 31.444dvh;
   translate: var(--guide-x, 34vw) var(--guide-y, 80vh); pointer-events: none;
   transition: opacity .6s ease; }
-.guide-poster img { display: block; width: auto; height: 100%; translate: -34.18% -84.28%;
+.guide-poster img { display: block; width: auto; height: 100%; translate: -37.65% -85.69%;
   animation: guide-hover 4.5s ease-in-out infinite; }
 .guide-poster.is-away, .guide-poster.is-live { opacity: 0; }
 .guide-poster.is-live img { animation-play-state: paused; }
 @keyframes guide-hover { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-1.2%); } }
 @media (max-width: 699px) {
-  .guide-poster { height: 15.225vh; height: 15.225dvh; translate: var(--guide-x, 22vw) var(--guide-y, 72vh); }
-  .guide-poster img { translate: -25.17% -63.18%; }
+  .guide-poster { height: 15.166vh; height: 15.166dvh; translate: var(--guide-x, 22vw) var(--guide-y, 72vh); }
+  .guide-poster img { translate: -25.17% -63.42%; }
 }
 @media (prefers-reduced-motion: reduce) { .guide-poster, .guide-poster img { animation: none; transition: opacity .3s ease; } }
