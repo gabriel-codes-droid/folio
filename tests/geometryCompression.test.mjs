@@ -5,14 +5,15 @@ import { contentHash } from '../scripts/verify-glb-geometry.mjs';
 import { readGlb, writeGlb, decoder } from '../scripts/optimize-glb-geometry.mjs';
 import { GLTFLoader } from 'three-stdlib';
 
-// Fingerprints of the deployed assets' decoded content (2026-10-19 slimming:
-// moon/earth simplified, lava textures 1024px, mech textures 512px and its
-// unused embedded clip removed; the mech rig and geometry are unchanged). These
+// Fingerprints of the deployed assets' decoded content. Slimming so far:
+// moon/earth simplified, lava textures 1024px, the mech's unused clip,
+// texture sets and tangents removed, its geometry quantized (skeleton and
+// joints unchanged) and its detail maps 256px (colour maps 512px). These
 // cover every decoded byte (including textures), rig, transform and animation,
 // rather than only checking that a file has a plausible GLB header.
 const originals = {
   'alien_planet.glb': '5f14af19b5883d4268ac2b8ee2accf291710dc007fa95c9acde4947047c78e52',
-  'bot_mecha_warrior.glb': '37f03cfe53ae2a3174e019adb9ef8909f0e01a13371103f1b4cb4f187fae14ec',
+  'bot_mecha_warrior.glb': 'ccc067e2e749c19acb60d790e01384ffe2fb797c5921213961afdf60869b0443',
   'lava_planet.glb': '4058302c64410882a0516ad408b4d61fe8bcff36fc82c4177eb041bde753b7c0',
   'little_planet_earth.glb': 'b814fa67fdddb9533a8886ae58d3b4dba97e31edd822c26afe761f358d7e43d4',
   'moon.glb': '986f2d665286fb8c4396720fc5880d5ddbdf569bb7d662676fd9640d6ff2828f',

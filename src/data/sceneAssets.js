@@ -7,8 +7,8 @@ export const SCENE_ASSETS = [
   },
   {
     "url": "/models/bot_mecha_warrior.glb",
-    "bytes": 6062428,
-    "version": "2d8dbc3c14948757"
+    "bytes": 2522788,
+    "version": "50aec9c1c29e09a1"
   },
   {
     "url": "/models/flying.fbx",
