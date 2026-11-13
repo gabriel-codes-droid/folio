@@ -214,7 +214,10 @@ export default function SpaceCanvas({ initialProgress = 0, onStagePrepared, stag
             maxPolarAngle={Math.PI / 1.8} minPolarAngle={Math.PI / 5} />
           <EffectComposer multisampling={0}><Bloom luminanceThreshold={0.9} luminanceSmoothing={0.9} intensity={0.8} radius={0.3} /></EffectComposer>
         </Suspense>
-        {MoonScene && <SceneErrorBoundary onError={handleStageError}><Suspense fallback={null}>
+        {/* The moon and planets download in the background but are only parsed
+            and warmed once the guide moves: preparing both at once made the
+            guide wait several seconds for a section the visitor hasn't reached. */}
+        {MoonScene && ready && <SceneErrorBoundary onError={handleStageError}><Suspense fallback={null}>
           <group ref={moonRoot}><group visible={inSpace && !!readyStages.moon}>
             <MoonScene moonPosition={MOON_CENTER} moonRadius={MOON_RADIUS} planetsVisible
               labelsVisible={gallery} onSelect={setSelectedProject} />
