@@ -1,76 +1,184 @@
 ---
-// The page is readable immediately; this slim strip only reports the 3D
-// guide streaming in, then fades away. The moon and planets follow silently.
+// Loading screen: rolling percentage and a rocket flying inside a bar. It
+// covers only the guide's own preparation, and never holds a visitor long:
+// after MAX_SCREEN_MS (or SKIP) it docks into a slim strip and the page opens.
+const year = new Date().getFullYear();
 ---
-<div id="boot-hud" data-stage="loading" data-progress="0" data-state="loading" role="progressbar"
-  aria-label="Loading the 3D scene" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
-  <div class="boot-track" aria-hidden="true">
-    <span class="boot-path"></span>
-    <span class="boot-trail" id="boot-trail"></span>
-    <span class="boot-rocket" id="boot-rocket">
-      <!-- Drawn nose-up, turned to fly right. -->
-      <svg viewBox="0 0 190 60" width="44" height="14">
-        <g transform="translate(190 0) rotate(90)">
-          <g class="boot-flame">
-            <path class="boot-flame-outer" d="M18 146 C18 170 26 182 30 190 C34 182 42 170 42 146 Z"/>
-            <path class="boot-flame-inner" d="M23 146 C23 162 28 172 30 178 C32 172 37 162 37 146 Z"/>
-          </g>
-          <g class="boot-hull">
-            <path d="M12 110 1 140 12 134 Z M48 110 59 140 48 134 Z"/>
-            <path d="M30 4C43 20 48 42 48 70V132H12V70C12 42 17 20 30 4Z"/>
-            <path d="M20 132 17 146H43L40 132"/>
-            <circle cx="30" cy="62" r="7.5"/>
-          </g>
-        </g>
-      </svg>
-    </span>
+<div id="boot-hud" data-stage="loading" data-progress="0" data-presentation="loading" role="progressbar"
+  aria-label="Loading the portfolio" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+  <div id="boot-panel">
+    <div class="boot-stars" aria-hidden="true"></div>
+    <header class="boot-header boot-mono" aria-hidden="true">
+      <span class="boot-name">N.MANDRAKE GABRIEL</span>
+      <span>PORTFOLIO / {year}</span>
+    </header>
+
+    <div class="boot-center">
+      <div class="boot-counter" aria-hidden="true">
+        <span class="boot-digits" id="boot-digits">00</span><span class="boot-percent">%</span>
+      </div>
+
+      <div class="boot-bar" aria-hidden="true">
+        <div class="boot-lane" id="boot-lane">
+          <span class="boot-fill"></span>
+          <span class="boot-rocket">
+            <!-- Drawn nose-up, turned to fly right. -->
+            <svg viewBox="0 0 190 60" width="72" height="23">
+              <g transform="translate(190 0) rotate(90)">
+                <g class="boot-flame">
+                  <path class="boot-flame-outer" d="M18 146 C18 170 26 182 30 190 C34 182 42 170 42 146 Z"/>
+                  <path class="boot-flame-inner" d="M23 146 C23 162 28 172 30 178 C32 172 37 162 37 146 Z"/>
+                </g>
+                <g class="boot-hull">
+                  <path d="M12 110 1 140 12 134 Z M48 110 59 140 48 134 Z"/>
+                  <path d="M30 4C43 20 48 42 48 70V132H12V70C12 42 17 20 30 4Z"/>
+                  <path d="M20 132 17 146H43L40 132"/>
+                  <circle cx="30" cy="62" r="7.5"/>
+                  <circle class="boot-port" cx="30" cy="62" r="3.5"/>
+                </g>
+              </g>
+            </svg>
+          </span>
+        </div>
+      </div>
+
+      <p class="boot-mono boot-status"><span id="boot-label">PREPARING FOR LAUNCH</span><span class="boot-small-percent" id="boot-small-percent">0%</span></p>
+    </div>
+
+    <div class="boot-actions boot-mono">
+      <button id="boot-skip" type="button">SKIP →</button>
+      <button id="boot-retry" type="button" hidden>RETRY ↻</button>
+    </div>
   </div>
-  <span class="boot-label" id="boot-label">LOADING 3D <span id="boot-percent">0</span>%</span>
-  <button id="boot-retry" type="button" hidden>RETRY ↻</button>
 </div>
 
+<!-- Lock scrolling before anything paints; a safety net reopens the page if the loader script never runs. -->
+<script is:inline>
+  document.documentElement.classList.add('portfolio-booting');
+  if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+  window.scrollTo(0, 0);
+  setTimeout(function () {
+    var hud = document.getElementById('boot-hud');
+    if (hud && !hud.dataset.initialized) { hud.hidden = true; document.documentElement.classList.remove('portfolio-booting'); }
+  }, 10000);
+</script>
 <script>
-  import { initLoadStrip } from '../scripts/bootLoader.js';
+  import { initLoadScreen } from '../scripts/bootLoader.js';
   import { startSceneDownloads } from './sceneDownloads.js';
   // Start the models now, not after the 3D bundle and React have loaded.
   startSceneDownloads();
-  initLoadStrip();
+  initLoadScreen();
 </script>
 
 <style is:global>
+  html.portfolio-booting, html.portfolio-booting body { overflow: hidden !important; overscroll-behavior: none; }
   #boot-hud {
-    --ink: #f3f3f0; --dim: #8c9194; --accent: #b7d7e9; --rocket-w: 44px;
-    position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
-    display: flex; align-items: center; gap: 22px; height: 52px; padding: 0 max(4vw, 20px);
-    background: linear-gradient(to top, #050505e6, #05050500);
-    font: 400 11px/1 var(--font-mono); letter-spacing: .12em; color: var(--dim);
-    pointer-events: none; opacity: 0;
-    /* Wait half a second before showing, so cached visits never flash it. */
-    animation: boot-in 400ms ease 500ms forwards;
-    transition: opacity 600ms ease, transform 600ms cubic-bezier(.76, 0, .24, 1);
+    --ink: #f3f3f0; --dim: #7d8386; --line: #ffffff24; --accent: #b7d7e9; --rocket-w: 72px; --p: 0;
+    --ease: cubic-bezier(.76, 0, .24, 1); --gutter: max(4vw, 20px);
+    position: fixed; inset: 0; z-index: 9999; color: var(--ink); user-select: none;
   }
-  @keyframes boot-in { to { opacity: 1; } }
-  #boot-hud[data-state="done"] { animation: none; opacity: 0; transform: translateY(100%); transition-delay: 700ms; }
   #boot-hud[hidden] { display: none; }
-  .boot-track { position: relative; flex: 1; height: 14px; container-type: inline-size; }
-  .boot-path { position: absolute; left: 0; right: 0; top: 50%; height: 1px;
-    background: repeating-linear-gradient(90deg, #ffffff30 0 4px, transparent 4px 10px); }
-  .boot-trail { position: absolute; left: 0; top: calc(50% - .5px); width: calc(100% - var(--rocket-w)); height: 1px;
-    background: linear-gradient(90deg, #ffffff00, var(--accent) 70%, #fff); transform-origin: left; transform: scaleX(0); }
-  .boot-rocket { position: absolute; left: 0; top: 0; width: var(--rocket-w); height: 14px; will-change: transform; }
-  .boot-rocket svg { display: block; overflow: visible; }
-  .boot-hull path, .boot-hull circle { fill: #050505; stroke: var(--ink); stroke-width: 4; stroke-linejoin: round; }
+  #boot-panel { position: absolute; inset: 0; overflow: hidden; background: #050505; transition: transform 800ms var(--ease); }
+  #boot-panel::before { content: ''; position: absolute; inset: 0; pointer-events: none;
+    background-image: radial-gradient(#ffffff12 1px, transparent 1px); background-size: 28px 28px;
+    mask-image: radial-gradient(ellipse at 50% 50%, #000 0%, transparent 70%); }
+  .boot-mono { font: 400 11px/1.5 var(--font-mono); letter-spacing: .12em; color: var(--dim); }
+  .boot-stars { position: absolute; left: 0; right: 0; top: 0; height: 200%; pointer-events: none; opacity: .7;
+    background-image: radial-gradient(1px 1px at 12% 8%, #fff8, transparent), radial-gradient(1px 1px at 68% 22%, #fff6, transparent),
+      radial-gradient(1px 1px at 35% 41%, #fff5, transparent), radial-gradient(1px 1px at 84% 57%, #fff7, transparent),
+      radial-gradient(1px 1px at 22% 73%, #fff5, transparent), radial-gradient(1px 1px at 57% 88%, #fff6, transparent),
+      radial-gradient(1.5px 1px at 93% 12%, #fff6, transparent), radial-gradient(1.5px 1px at 4% 46%, #fff6, transparent);
+    background-size: 100% 50%; animation: boot-drift 14s linear infinite; }
+  @keyframes boot-drift { from { transform: translate3d(0, -50%, 0); } to { transform: translate3d(0, 0, 0); } }
+
+  .boot-header { position: absolute; top: 0; left: 0; right: 0; display: flex; justify-content: space-between; align-items: center;
+    height: 72px; padding: 0 var(--gutter); border-bottom: 1px solid var(--line); }
+  .boot-name { color: var(--ink); }
+
+  .boot-center { position: absolute; left: 50%; top: 50%; width: min(640px, calc(100% - 2 * var(--gutter)));
+    transform: translate(-50%, -50%); display: grid; justify-items: center; gap: 28px; }
+
+  /* Rolling digits: each digit sits in its own clipped slot. */
+  .boot-counter { display: flex; align-items: flex-start; line-height: 1;
+    font: 500 clamp(96px, 17vw, 210px)/1 'PP Neue Montreal', 'Neue Montreal', Arial, Helvetica, sans-serif;
+    letter-spacing: -.05em; font-variant-numeric: tabular-nums; }
+  .boot-digits { display: flex; }
+  .roll-slot { position: relative; display: inline-block; width: .6em; height: 1em; overflow: hidden; }
+  .roll-digit { position: absolute; inset: 0; text-align: center; will-change: transform; }
+  .boot-percent { margin: .14em 0 0 .3em; font: 400 13px/1 var(--font-mono); letter-spacing: .12em; color: var(--dim); }
+
+  /* The bar: a pill with the rocket flying along a lane inside it. */
+  .boot-bar { width: 100%; height: 46px; padding: 5px; border: 1px solid var(--line); border-radius: 99px; background: #ffffff05; }
+  .boot-lane { position: relative; height: 100%; }
+  .boot-fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 99px;
+    width: calc(var(--rocket-w) * .45 + var(--p) * (100% - var(--rocket-w)));
+    background: linear-gradient(90deg, #b7d7e900, #b7d7e92e 60%, #b7d7e966);
+    box-shadow: inset 0 0 0 1px #b7d7e922; }
+  .boot-rocket { position: absolute; top: 50%; left: calc(var(--p) * (100% - var(--rocket-w))); width: var(--rocket-w); translate: 0 -50%; }
+  .boot-rocket svg { display: block; overflow: visible; width: 100%; height: auto; }
+  .boot-hull path, .boot-hull circle { fill: #050505; stroke: var(--ink); stroke-width: 3.2; stroke-linejoin: round; }
+  .boot-hull .boot-port { fill: var(--accent); stroke: none; }
   .boot-flame { transform-box: fill-box; transform-origin: 50% 0%; animation: boot-flicker 120ms steps(2) infinite alternate; }
   .boot-flame-outer { fill: #b7d7e966; }
   .boot-flame-inner { fill: #fff; }
-  @keyframes boot-flicker { from { transform: scaleY(.86); } to { transform: scaleY(1.1); } }
-  .boot-label { flex: 0 0 auto; min-width: 17ch; text-align: right; font-variant-numeric: tabular-nums; }
-  #boot-hud[data-state="done"] .boot-label { color: var(--accent); }
-  #boot-hud[data-state="error"] .boot-flame { display: none; }
-  #boot-retry { pointer-events: auto; padding: 7px 14px; border: 1px solid var(--ink); border-radius: 99px;
-    background: #050505; color: var(--ink); font: inherit; letter-spacing: inherit; cursor: pointer; }
-  #boot-retry[hidden] { display: none; }
-  #boot-retry:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
-  @media (max-width: 600px) { #boot-hud { gap: 14px; height: 44px; } .boot-label { min-width: 0; } }
-  @media (prefers-reduced-motion: reduce) { #boot-hud { animation-duration: 1ms; } .boot-flame { animation: none; } }
+  @keyframes boot-flicker { from { transform: scaleY(.86); } to { transform: scaleY(1.12); } }
+
+  .boot-status { display: flex; gap: 14px; margin: 0; }
+  .boot-small-percent { display: none; font-variant-numeric: tabular-nums; }
+  #boot-hud[data-presentation="complete"] .boot-status, #boot-hud[data-presentation="launch"] .boot-status,
+  #boot-hud[data-presentation="complete"] .boot-percent { color: var(--accent); }
+
+  .boot-actions { position: absolute; right: var(--gutter); bottom: max(4vh, 24px); display: flex; gap: 10px; }
+  .boot-actions button { padding: 9px 18px; border: 1px solid #ffffff40; border-radius: 99px; background: transparent;
+    color: var(--ink); font: inherit; letter-spacing: inherit; cursor: pointer; }
+  .boot-actions button:hover { border-color: var(--ink); }
+  .boot-actions button:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+  .boot-actions button[hidden] { display: none; }
+  #boot-skip { opacity: 0; animation: boot-in 400ms ease 2500ms forwards; }
+  @keyframes boot-in { to { opacity: 1; } }
+
+  /* Ready: the rocket blasts out of the bar, then the screen lifts away. */
+  .boot-rocket { transition: transform 420ms cubic-bezier(.55, 0, .85, .25), opacity 300ms ease 260ms; }
+  #boot-hud[data-presentation="launch"] .boot-rocket, #boot-hud[data-presentation="revealing"] .boot-rocket { transform: translateX(110vw); opacity: 0; }
+  #boot-hud[data-presentation="launch"] .boot-flame { transform: scaleY(1.6); }
+  #boot-hud[data-presentation="revealing"] { pointer-events: none; }
+  #boot-hud[data-presentation="revealing"] #boot-panel { transform: translate3d(0, -100%, 0); }
+
+  /* Docked: still loading after the time limit (or SKIP), so the page opens
+     and only a slim strip at the bottom keeps reporting progress. */
+  #boot-hud[data-docked] { inset: auto 0 0 0; height: 52px; pointer-events: none; }
+  #boot-hud[data-docked] #boot-panel { background: linear-gradient(to top, #050505e6, #05050500); }
+  #boot-hud[data-docked] #boot-panel::before,
+  #boot-hud[data-docked] .boot-stars,
+  #boot-hud[data-docked] .boot-header,
+  #boot-hud[data-docked] .boot-counter,
+  #boot-hud[data-docked] #boot-skip { display: none; }
+  #boot-hud[data-docked] .boot-center { left: var(--gutter); right: var(--gutter); top: 50%; width: auto;
+    transform: translateY(-50%); display: flex; align-items: center; gap: 20px; }
+  #boot-hud[data-docked] .boot-bar { --rocket-w: 44px; flex: 1; height: 14px; padding: 0; border: 0; background: none; }
+  #boot-hud[data-docked] .boot-fill { top: calc(50% - .5px); bottom: auto; height: 1px; border-radius: 0; box-shadow: none;
+    background: linear-gradient(90deg, #ffffff00, var(--accent) 70%, #fff); }
+  #boot-hud[data-docked] .boot-hull path, #boot-hud[data-docked] .boot-hull circle { stroke-width: 4; }
+  #boot-hud[data-docked] .boot-small-percent { display: inline; }
+  #boot-hud[data-docked] .boot-actions { top: 50%; bottom: auto; left: auto; translate: 0 -50%; pointer-events: auto; }
+  #boot-hud[data-docked][data-presentation="error"] .boot-center { right: calc(var(--gutter) + 120px); }
+  #boot-hud[data-docked][data-presentation="done"] { opacity: 0; transform: translateY(100%); transition: opacity 600ms ease 700ms, transform 600ms var(--ease) 700ms; }
+
+  #boot-hud[data-presentation="error"] .boot-flame { display: none; }
+  #boot-hud[data-presentation="error"] .boot-status { color: #ff8b7a; }
+
+  @media (max-width: 600px) {
+    .boot-header { height: 56px; }
+    .boot-header span:last-child { display: none; }
+    #boot-hud { --rocket-w: 56px; }
+    .boot-bar { height: 38px; }
+    .boot-center { gap: 20px; }
+    .boot-actions { left: var(--gutter); justify-content: center; }
+    #boot-hud[data-docked] { height: 44px; }
+    #boot-hud[data-docked] #boot-label { display: none; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .boot-stars, .boot-flame { animation: none; }
+    #boot-panel, .boot-rocket { transition-duration: 1ms; }
+  }
 </style>
