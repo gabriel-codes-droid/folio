@@ -3,7 +3,7 @@
 // The percentage follows real progress (it never
 // completes on a timer), but the screen itself is time-boxed: after
 // MAX_SCREEN_MS, or SKIP, it docks into a slim bottom strip and the page opens.
-import { createRollingNumber } from './rollingNumber.js';
+import { createRollingNumber, ROLL_INTERVAL } from './rollingNumber.js';
 
 export const MIN_VISIBLE_MS = 900;
 export const MAX_SCREEN_MS = 8000;
@@ -95,8 +95,12 @@ export function initLoadScreen() {
     window.dispatchEvent(new Event('portfolio:revealing'));
   }
 
-  function show(integer) {
+  let lastRoll = -Infinity;
+  function show(integer, now) {
     if (integer === shown) return;
+    // Hold the digits until the previous roll lands; 100 always shows at once.
+    if (integer !== 100 && now - lastRoll < ROLL_INTERVAL) return;
+    lastRoll = now;
     shown = integer;
     digits.set(integer);
     smallPercent.textContent = `${integer}%`;
@@ -117,7 +121,7 @@ export function initLoadScreen() {
       displayed += Math.min(gap, Math.max(gap * (1 - Math.exp(-delta * (ready ? 10 : 5))), .3 * delta), 1.6 * delta);
       if (ready && gap < .005 && timeCap === 1) displayed = 1;
       root.style.setProperty('--p', displayed.toFixed(4));
-      show(displayed === 1 ? 100 : Math.min(99, Math.floor(displayed * 100)));
+      show(displayed === 1 ? 100 : Math.min(99, Math.floor(displayed * 100)), now);
       if (displayed === 1 && phase === 'docked') {
         phase = 'gone-soon';
         root.dataset.presentation = 'done';

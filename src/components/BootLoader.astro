@@ -103,8 +103,9 @@ const year = new Date().getFullYear();
     font: 500 clamp(96px, 17vw, 210px)/1 'PP Neue Montreal', 'Neue Montreal', Arial, Helvetica, sans-serif;
     letter-spacing: -.05em; font-variant-numeric: tabular-nums; }
   .boot-digits { display: flex; }
-  .roll-slot { position: relative; display: inline-block; width: .6em; height: 1em; overflow: hidden; }
-  .roll-digit { position: absolute; inset: 0; text-align: center; will-change: transform; }
+  /* Slot hugs the digit height so a rolling digit is clipped cleanly. */
+  .roll-slot { position: relative; display: inline-block; width: .6em; height: .78em; overflow: hidden; }
+  .roll-digit { position: absolute; inset: 0; line-height: .78em; text-align: center; will-change: transform, opacity; }
   .boot-percent { margin: .14em 0 0 .3em; font: 400 13px/1 var(--font-mono); letter-spacing: .12em; color: var(--dim); }
 
   /* The bar: a pill with the rocket flying along a lane inside it. */
